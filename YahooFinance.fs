@@ -1,13 +1,22 @@
 module YahooFinance
 
 /// This is a private binding for a string print formatter to create the url
-/// to retrieve historical prices from Yahoo Finance
-let private urlFormat = sprintf "http://ichart.yahoo.com/table.csv?s=%s&a=%d\
-&b=%d&c=%d&ignore=.csv"
+/// to retrieve historical prices from Yahoo Finance from a certain start date
+///
+let private urlFormatFromDate = sprintf "http://ichart.yahoo.com/table.csv\
+?s=%s&a=%d&b=%d&c=%d&ignore=.csv"
+
+/// This is a private binding for a string print formatter to create the url
+/// to retrive historical prices from Yahoo Finance from the earliest date
+/// available
+///
+let private urlFormat = sprintf "http://ichart.yahoo.com/table.csv?s=%s\
+&ignore=.csv"
 
 /// This is a private binding for the CsvProvider type to use to Parse
 /// csv output returned from Yahoo Finance historical prices url.  CsvProvider
 /// depends on the FSharp.Data.dll assembly
+///
 type private Downloader = FSharp.Data.CsvProvider<"Date(date), Open(float), \
 High(float), Low(float), Close(float), Volume(int), \"Adj Close\"(float)">
 
@@ -18,17 +27,30 @@ High(float), Low(float), Close(float), Volume(int), \"Adj Close\"(float)">
 /// <param name="startDate">String in <c>yyyy-mm-dd</c> format representing
 /// the start date</param>
 /// <returns>the URL as a string</returns>
-let makeUrl stockCode startDate =
-    let dt = System.DateTime.Parse startDate
-    urlFormat stockCode (dt.Month - 1) dt.Day dt.Year
+///
+let makeUrl stockCode startDateOption =
+    match startDateOption with
+    | None -> urlFormat stockCode
+    | Some startDate -> let dt = System.DateTime.Parse startDate
+                        urlFormatFromDate stockCode (dt.Month - 1) dt.Day
+                            dt.Year
 
 /// <summary>This function downloads historical prices using a CsvProvider with
 /// schema representing the csv output from Yahoo Finance</summary>
+/// <param name="startDateOption">String in <c>yyyy-mm-dd</c> format
+/// representing the start date</param>
 /// <param name="stockCode">Reuters code of the stock</param>
-/// <param name="startDate">String in <c>yyyy-mm-dd</c> format representing the
-/// start date</param>
 /// <returns>CsvProvider object with the date, open, high, low, close, volume
 /// and adjusted close prices in each row</returns>
-let downloadHist stock dateString =
-    let url = makeUrl stock dateString
+///
+let downloadHistFromDate startDateOption stockCode  =
+    let url = makeUrl stockCode startDateOption
     Downloader.Load url
+
+/// <summary>This function simply curries downloadHistFromDate with the optional
+/// startDate set to None</summary>
+/// <param name="stockCode">Reuters code of the stock</param>
+/// <returns>CsvProvider object with the date, open, high, low, close, volume
+/// and adjusted close prices in each row</returns>
+///
+let downloadHist = downloadHistFromDate None
