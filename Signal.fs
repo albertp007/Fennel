@@ -75,3 +75,42 @@ module Signal =
                     let avg = total'/(float n)
                     movingAverage' n t n (h::(List.rev qt)) total' (avg::acc)
         movingAverage' n lst 0 [] 0.0 []
+
+    /// <summary>This function calculates the dot product of two lists of
+    /// float numbers </summary>
+    /// <param name="v1">the first vector of floats</param>
+    /// <param name="v2">the second vector of floats</param>
+    /// <returns>The dot product of v1 and v2</returns>
+    ///
+    let dot v1 v2 =
+        List.fold (fun a (x, y)->a + x*y) 0.0 (List.zip v1 v2)
+
+    /// <summary>This function is a simplified version of the filter() function
+    /// in R. </summary>
+    /// <param name="w">Vector of weights (float)</param>
+    /// <param name="lst">The list of float values</param>
+    /// <returns>The series of numbers w0x0+w1x1+...+wnxn,
+    /// w0x1+w1x2+...+wnx(n+1) ...</returns>
+    ///
+    let filter w lst =
+        //
+        // Helper function
+        // i - keep track of the first n iterations, when the queue is not full
+        // q - a queue to keep track of the last n elements
+        // total - current total of all the elements in q
+        // acc - the result
+        //
+        let m = List.length w
+        let w' = List.rev w
+        let rec filter' n w lst i q acc =
+            match lst with
+            | [] -> List.rev acc
+            | h::t ->
+                    // q isn't full yet, keeping pushing
+                    let q' = if i < n then (h::q) else
+                        // q is full, pop at the end and push in the front
+                        h::(List.rev (List.tail (List.rev q)))
+                    let tmp = if i >= n - 1 then (dot w q') else 0.0
+                    let n' = if i < n then i+1 else n
+                    filter' n w t n' q' (tmp::acc)
+        filter' m w' lst 0 [] []
