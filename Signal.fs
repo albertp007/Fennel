@@ -114,3 +114,25 @@ module Signal =
                     let n' = if i < n then i+1 else n
                     filter' n w t n' q' (tmp::acc)
         filter' m w' lst 0 [] []
+
+    /// <summary>Calculates n day RSI given a list of bars</summary>
+    /// <param name="n">number of days</param>
+    /// <param name="prices">list of QuantFin.Data.Bars</param>
+    /// <returns>list of RSI with the first n entries being zero</returns>
+    let rsi n (prices: QuantFin.Data.Bar list) =
+        let ma = movingAverage n
+        prices
+         // extract close prices from list of bars
+         |> List.map (fun x->x.Close)
+         // calculate differences between adjacent terms
+         |> filter [-1.0; 1.0]
+         // create list of pair (u, d)
+         |> List.map (fun x->if x < 0.0 then (0.0, -x) else (x, 0.0))
+         // combine into list of u and list of d
+         |> List.unzip
+         // calculate moving average of list of u and list of d
+         |> fun (u,d)->(ma u, ma d)
+         |> fun (mau, mad)->List.zip mau mad
+         |> List.map (fun (mau, mad) ->
+                let rs = if mad <= 0.0 then 0.0 else mau/mad
+                100.0 - 100.0/(1.0 + rs))
