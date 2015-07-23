@@ -2,6 +2,15 @@ namespace QuantFin
 
 module Signal =
 
+  type TechnicalIndicator =
+    | Rsi of int
+    | Sma of int
+    | Ema of int
+    | Macd of int * int * int
+    | Open
+    | Close
+    | Volume
+
   /// <summary>This function finds the occurrence of price patterns as defined
   /// by the function f from the list of price data</summary>
   /// <param name="f">the function which takes a list of price bars and
@@ -27,11 +36,11 @@ module Signal =
   /// <param name="prices">list of price bars to process</param>
   /// <returns>optional pair of System.DateTime indicating the start time and
   /// end time of the pattern if found</returns>
-  let bearishEngulf (prices: QuantFin.Data.Bar list) =
+  let bearishEngulf (prices: (QuantFin.Data.Bar * float) list) =
     match prices with
-    | h1::h2::_ -> if h2.Open > h1.Close && h2.Close < h1.Open &&
-            h1.Open < h1.Close then
-            Some (h1.Date, h2.Date) else None
+    | (h1, r1)::(h2, r2)::_ -> if h2.Open > h1.Close && h2.Close < h1.Open &&
+            h1.Open < h1.Close && r1 > 80.0 then
+            Some (h1.Date, h2.Date, r1, r2) else None
     | _ -> None
 
   /// <summary>This function calculates the simple moving average of a list of
@@ -136,3 +145,37 @@ module Signal =
      |> List.map (fun (mau, mad) ->
         let rs = if mad <= 0.0 then 0.0 else mau/mad
         100.0 - 100.0/(1.0 + rs))
+
+  /// <summary> Calculates simple moving average of the close price given
+  /// a list of bars </summary>
+  /// <param name="n">Size of the moving window</param>
+  /// <param name="prices">list of bars</param>
+  /// <returns>list of floats</returns>
+  let sma n (prices: QuantFin.Data.Bar list) =
+    let ma = movingAverage n
+    prices |> List.map (fun x->x.Close) |> ma
+
+  /// <summary>Calculates different types of technical indicators given a list
+  /// of bars </summary>
+  /// <param name="t">the technical indicator of type TechnicalIndicator</param>
+  /// <param name="prices">the list of price bars</param>
+  /// <returns>list of floats</returns>
+  let calcTI t (prices: QuantFin.Data.Bar list) =
+    match t with
+    | Rsi n -> rsi n prices
+    | Sma n -> sma n prices
+    | Ema n -> sma n prices          // TODO placeholder for now
+    | Macd (a, _, _) -> sma a prices // TODO placeholder for now
+    | Open -> prices |> List.map (fun b->b.Open)
+    | Close -> prices |> List.map (fun b->b.Close)
+    | Volume -> prices |> List.map (fun b->float b.Volume)
+
+  /// <summary>Augments the list of price bars with one technical indicator
+  /// </summary>
+  /// <param name="ti">the technical indicator of type TechnicalIndicator
+  /// </param>
+  /// <param name="prices">the list of price bars</param>
+  /// <returns>list of tuple of price bar and float which is the value of the
+  /// technical indicator calculated</returns>
+  let augment ti prices =
+    calcTI ti prices |> List.zip prices
