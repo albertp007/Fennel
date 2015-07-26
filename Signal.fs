@@ -21,7 +21,8 @@ module Signal =
   /// found</param>
   /// <returns>list of (System.DateTime*System.DateTime) pairs indicating the
   /// start and end date of all occurrences of the pattern</returns>
-  let rec findPattern f prices =
+  let findPattern (f, augment) prices =
+    let augmented = augment prices
     let rec findPatternHelp f acc n prices =
       match prices with
       | [] -> acc
@@ -29,20 +30,7 @@ module Signal =
         match f prices n with
         | Some startEndDate -> findPatternHelp f (startEndDate::acc) (n+1) t
         | None -> findPatternHelp f acc (n+1) t
-    findPatternHelp f [] 0 prices
-
-  /// <summary>This function defines the bearish engulfing candlestick pattern
-  /// </summary>
-  /// <param name="prices">list of price bars to process</param>
-  /// <returns>optional pair of System.DateTime indicating the start time and
-  /// end time of the pattern if found</returns>
-  let bearishEngulf (prices: (QuantFin.Data.Bar * float) list) n =
-    match prices with
-    | (h1, rsi1)::(h2, rsi2)::_ ->
-        if h2.o > h1.c && h2.c < h1.o &&
-          h1.o < h1.c && rsi1 > 80.0 then
-          Some (h1.d, h2.d, rsi1, rsi2, n+2) else None
-    | _ -> None
+    findPatternHelp f [] 0 augmented
 
   /// <summary>This function calculates the simple moving average of a list of
   /// float values</summary>
@@ -180,3 +168,21 @@ module Signal =
   /// technical indicator calculated</returns>
   let augment ti prices =
     calcTI ti prices |> List.zip prices
+
+  /// <summary>This function defines the bearish engulfing candlestick pattern
+  /// </summary>
+  /// <param name="prices">list of price bars to process</param>
+  /// <returns>optional pair of System.DateTime indicating the start time and
+  /// end time of the pattern if found</returns>
+  let isBearishEngulf (prices: (QuantFin.Data.Bar * float) list) n =
+    match prices with
+    | (h1, rsi1)::(h2, rsi2)::_ ->
+        if h2.o > h1.c && h2.c < h1.o &&
+          h1.o < h1.c && rsi1 > 80.0 then
+          Some (h1.d, h2.d, rsi1, rsi2, n+2) else None
+    | _ -> None
+
+  let augmentRsi n =
+    fun prices -> augment (Rsi n) prices
+
+  let bearishEngulf = (isBearishEngulf, augmentRsi 14)
