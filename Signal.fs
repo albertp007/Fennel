@@ -38,9 +38,10 @@ module Signal =
   /// end time of the pattern if found</returns>
   let bearishEngulf (prices: (QuantFin.Data.Bar * float) list) =
     match prices with
-    | (h1, r1)::(h2, r2)::_ -> if h2.Open > h1.Close && h2.Close < h1.Open &&
-            h1.Open < h1.Close && r1 > 80.0 then
-            Some (h1.Date, h2.Date, r1, r2) else None
+    | (h1, rsi1)::(h2, rsi2)::_ ->
+        if h2.o > h1.c && h2.c < h1.o &&
+          h1.o < h1.c && rsi1 > 80.0 then
+          Some (h1.d, h2.d, rsi1, rsi2) else None
     | _ -> None
 
   /// <summary>This function calculates the simple moving average of a list of
@@ -117,8 +118,8 @@ module Signal =
       | h::t ->
           // q isn't full yet, keeping pushing
           let q' = if i < n then (h::q) else
-            // q is full, pop at the end and push in the front
-            h::(List.rev (List.tail (List.rev q)))
+                    // q is full, pop at the end and push in the front
+                    h::(List.rev (List.tail (List.rev q)))
           let tmp = if i >= n - 1 then (dot w q') else 0.0
           let n' = if i < n then i+1 else n
           filter' n w t n' q' (tmp::acc)
@@ -132,7 +133,7 @@ module Signal =
     let ma = movingAverage n
     prices
      // extract close prices from list of bars
-     |> List.map (fun x->x.Close)
+     |> List.map (fun x->x.c)
      // calculate differences between adjacent terms
      |> filter [-1.0; 1.0]
      // create list of pair (u, d)
@@ -153,7 +154,7 @@ module Signal =
   /// <returns>list of floats</returns>
   let sma n (prices: QuantFin.Data.Bar list) =
     let ma = movingAverage n
-    prices |> List.map (fun x->x.Close) |> ma
+    prices |> List.map (fun x->x.c) |> ma
 
   /// <summary>Calculates different types of technical indicators given a list
   /// of bars </summary>
@@ -166,9 +167,9 @@ module Signal =
     | Sma n -> sma n prices
     | Ema n -> sma n prices          // TODO placeholder for now
     | Macd (a, _, _) -> sma a prices // TODO placeholder for now
-    | Open -> prices |> List.map (fun b->b.Open)
-    | Close -> prices |> List.map (fun b->b.Close)
-    | Volume -> prices |> List.map (fun b->float b.Volume)
+    | Open -> prices |> List.map (fun b->b.o)
+    | Close -> prices |> List.map (fun b->b.c)
+    | Volume -> prices |> List.map (fun b->float b.v)
 
   /// <summary>Augments the list of price bars with one technical indicator
   /// </summary>

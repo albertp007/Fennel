@@ -1,6 +1,15 @@
 namespace QuantFin
 
+open QuantFin.Data
+
 module YahooFinance =
+  ///
+  /// This is a type alias for the static CsvProvider type to use to retrieve
+  /// csv output returned from Yahoo Finance historical prices url.
+  /// CsvProvider depends on the FSharp.Data.dll assembly
+  ///
+  type Prices = FSharp.Data.CsvProvider<"Date(date), Open(float), \
+  High(float), Low(float), Close(float), Volume(int64), AdjClose(float)">
 
   /// This is a private binding for a string print formatter to create the url
   /// to retrieve historical prices from Yahoo Finance from a certain start
@@ -28,8 +37,16 @@ module YahooFinance =
     match startDateOption with
     | None -> urlFormat stockCode
     | Some startDate -> let dt = System.DateTime.Parse startDate
-              urlFormatFromDate stockCode (dt.Month - 1) dt.Day
-                dt.Year
+                        urlFormatFromDate stockCode (dt.Month - 1) dt.Day
+                          dt.Year
+
+  /// <summary>Converts the CsvProvider Row data structure to QuantFin.Data.Bar
+  /// </summary>
+  /// <param name="p">Prices.Row</param>
+  /// <returns>a QuantFin.Data.Bar record</returns>
+  let toBar (p: Prices.Row) =
+    { h = p.High; l = p.Low; o = p.Open; c = p.Close; v = p.Volume;
+      adj = Some p.AdjClose; d = p.Date }
 
   /// <summary>This function downloads historical prices using a CsvProvider
   /// with schema representing the csv output from Yahoo Finance</summary>
@@ -41,7 +58,8 @@ module YahooFinance =
   ///
   let downloadHistFromDate startDateOption stockCode  =
     let url = makeUrl stockCode startDateOption
-    QuantFin.Data.Prices.Load url
+    let prices = Prices.Load url
+    prices.Rows |> Seq.map toBar |> Seq.toList |> List.rev
 
   /// <summary>This function simply curries downloadHistFromDate with the
   /// optional startDate set to None</summary>
