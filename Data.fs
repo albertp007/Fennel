@@ -43,6 +43,7 @@ module Data =
   let pop q =
     match q with
     | FiniteQueue (0, _, _, _ ) -> failwith "Queue size is zero"
+    | FiniteQueue (_, _, [], _) -> failwith "Invariant violated: empty front"
     | FiniteQueue (n, k, [item], r) ->
         (item, FiniteQueue (n, k-1, List.rev r, []))
     | FiniteQueue (n, k, fh::ft, r) -> (fh, FiniteQueue (n, k-1, ft, r))
