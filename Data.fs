@@ -70,6 +70,11 @@ module Data =
     | FiniteQueue (_, _, f, []) -> last f
     | FiniteQueue (_, _, _, rh::_) -> Some rh
 
+  let toSeq = function
+    | FiniteQueue (0, _, _, _) -> Seq.empty
+    | FiniteQueue (_, _, [], []) -> failwith "Invariant violated: empty front"
+    | FiniteQueue (_, _, f, r) -> (List.append f (List.rev r)) |> List.toSeq
+
   let size (FiniteQueue (_, n, _, _ )) = n
   let capacity (FiniteQueue (n, _, _, _)) = n
   let makeQueue n = FiniteQueue (n, 0, [], [])
