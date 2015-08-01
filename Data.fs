@@ -72,5 +72,5 @@ module Data =
 
   let size (FiniteQueue (_, n, _, _ )) = n
   let capacity (FiniteQueue (n, _, _, _)) = n
-  let makeQ n = FiniteQueue (n, 0, [], [])
-  let makeQueueWithItem n item = FiniteQueue (n, 1, [item], [])
+  let makeQueue n = FiniteQueue (n, 0, [], [])
+  let makeQueueWithItem n item = pushIgnore (makeQueue n) item
