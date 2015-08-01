@@ -24,33 +24,40 @@ module Data =
 
   let push q item =
     match q with
-    | FiniteQueue (0, _, _, _ ) -> failwith "Queue size is zero"
-    | FiniteQueue (n, 0, [], []) -> FiniteQueue (n, 1, [item], [])
-    | FiniteQueue (n, k, f, [] ) ->
+    | FiniteQueue (0, _, _, _ ) -> (q, None)
+    | FiniteQueue (n, 0, [], []) -> (FiniteQueue (n, 1, [item], []), None)
+    | FiniteQueue (n, _, [], []) -> failwith "Invariant violated: wrong size"
+    | FiniteQueue (_, _, [], _::_) -> failwith "Invariant violated: empty front"
+    | FiniteQueue (n, k, fh::ft, [] ) ->
       if ( k < n ) then
-        FiniteQueue (n, k+1, f, [item])
+        (FiniteQueue (n, k+1, fh::ft, [item]), None)
       else
-        FiniteQueue (n, k, [item], [])
+        (FiniteQueue (n, k, ft, [item]), Some fh)
     | FiniteQueue (n, k, fh::ft, r) ->
       if ( k < n ) then
-        FiniteQueue (n, k+1, fh::ft, item::r)
+        (FiniteQueue (n, k+1, fh::ft, item::r), None)
       else
         if ft = [] then
-          FiniteQueue (n, k, List.rev r, [item])
+          (FiniteQueue (n, k, List.rev r, [item]), Some fh)
         else
-          FiniteQueue (n, k, ft, item::r)
+          (FiniteQueue (n, k, ft, item::r), Some fh)
 
   let pop q =
     match q with
-    | FiniteQueue (0, _, _, _ ) -> failwith "Queue size is zero"
-    | FiniteQueue (_, _, [], _) -> failwith "Invariant violated: empty front"
+    | FiniteQueue (0, _, _, _ ) -> (q, None)
+    | FiniteQueue (_, _, [], []) -> (q, None)
+    | FiniteQueue (_, _, [], _::_) -> failwith "Invariant violated: empty front"
     | FiniteQueue (n, k, [item], r) ->
-        (item, FiniteQueue (n, k-1, List.rev r, []))
-    | FiniteQueue (n, k, fh::ft, r) -> (fh, FiniteQueue (n, k-1, ft, r))
+        (FiniteQueue (n, k-1, List.rev r, []), Some item)
+    | FiniteQueue (n, k, fh::ft, r) -> (FiniteQueue (n, k-1, ft, r), Some fh)
+
+  let pushIgnore q item = push q item |> fst
+
+  let popIgnore q = pop q |> fst
 
   let pokeHead q =
     match q with
-    | FiniteQueue (0, _, _, _) -> failwith "Queue size is zero"
+    | FiniteQueue (0, _, _, _) -> None
     | FiniteQueue (_, 0, [], _) -> None
     | FiniteQueue (_, _, [], _) -> failwith "Invariant violated: empty front"
     | FiniteQueue (_, _, fh::_, _) -> Some fh
@@ -63,4 +70,7 @@ module Data =
     | FiniteQueue (_, _, f, []) -> last f
     | FiniteQueue (_, _, _, rh::_) -> Some rh
 
-  let makeQ n item = FiniteQueue (n, 1, [item], [])
+  let size (FiniteQueue (_, n, _, _ )) = n
+  let capacity (FiniteQueue (n, _, _, _)) = n
+  let makeQ n = FiniteQueue (n, 0, [], [])
+  let makeQueueWithItem n item = FiniteQueue (n, 1, [item], [])
