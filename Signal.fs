@@ -161,3 +161,18 @@ module Signal =
     fun prices -> augment (Rsi n) prices
 
   let bearishEngulf = (isBearishEngulf, augmentRsi 14)
+
+  let ma1 n l =
+    let q0 = QuantFin.Queue.makeQueue n
+    let f (q, a) x =
+      match (QuantFin.Queue.push q x) with
+      | (q', Some x') ->
+          let a' = (a*(float n)-x'+x)/(float n)
+          (q', a'), a'
+      | (q', None) ->
+          if QuantFin.Queue.size q' = QuantFin.Queue.capacity q' then
+            let a' = QuantFin.Queue.toSeq q' |> Seq.average
+            ((q', a'), a')
+          else
+            ((q', 0.0), 0.0)
+    QuantFin.Data.foldState f (q0, 0.0) [] l
