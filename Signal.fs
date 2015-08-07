@@ -11,27 +11,6 @@ module Signal =
     | Close
     | Volume
 
-  /// <summary>This function finds the occurrence of price patterns as defined
-  /// by the function f from the list of price data</summary>
-  /// <param name="f">the function which takes a list of price bars and
-  /// returns an optional pair of (System.DataTime*System.DateTime) to
-  /// indicate the date time of the start of the pattern and the end of the
-  /// pattern</param>
-  /// <param name="prices">the list of price bars in which patterns are to be
-  /// found</param>
-  /// <returns>list of (System.DateTime*System.DateTime) pairs indicating the
-  /// start and end date of all occurrences of the pattern</returns>
-  let findPattern (f, augment) prices =
-    let augmented = augment prices
-    let rec findPatternHelp f acc n prices =
-      match prices with
-      | [] -> List.rev acc
-      | h::t ->
-        match f prices n with
-        | Some startEndDate -> findPatternHelp f (startEndDate::acc) (n+1) t
-        | None -> findPatternHelp f acc (n+1) t
-    findPatternHelp f [] 0 augmented
-
   /// <summary>This function calculates the dot product of two lists of
   /// float numbers </summary>
   /// <param name="v1">the first vector of floats</param>
@@ -161,6 +140,40 @@ module Signal =
     fun prices -> augment (Rsi n) prices
 
   let bearishEngulf = (isBearishEngulf, augmentRsi 14)
+
+  type ISignalGenerator<'A, 'S> =
+    abstract augment : QuantFin.Data.Bar list -> 'A list
+    abstract find : 'A list -> int -> 'S option
+
+  let bearishEngulf2 = {
+    new ISignalGenerator<_,_> with
+      member this.augment pList = augment (Rsi 14) pList
+      member this.find augList n = isBearishEngulf augList n
+  }
+
+  let rec findPatternHelp f acc n pList =
+    match pList with
+    | [] -> List.rev acc
+    | h::t ->
+      match f pList n with
+      | Some startEndDate -> findPatternHelp f (startEndDate::acc) (n+1) t
+      | None -> findPatternHelp f acc (n+1) t
+
+  /// <summary>This function finds the occurrence of price patterns as defined
+  /// by the function f from the list of price data</summary>
+  /// <param name="f">the function which takes a list of price bars and
+  /// returns an optional pair of (System.DataTime*System.DateTime) to
+  /// indicate the date time of the start of the pattern and the end of the
+  /// pattern</param>
+  /// <param name="prices">the list of price bars in which patterns are to be
+  /// found</param>
+  /// <returns>list of (System.DateTime*System.DateTime) pairs indicating the
+  /// start and end date of all occurrences of the pattern</returns>
+  let findPattern (f, augment) prices =
+    augment prices |> findPatternHelp f [] 0
+
+  let findPattern2 (sigGen: ISignalGenerator<_,_>) prices =
+    sigGen.augment prices |> findPatternHelp sigGen.find [] 0
 
   let maFast n l =
     let q0 = QuantFin.Queue.makeQueue n
