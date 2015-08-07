@@ -117,47 +117,37 @@ module Signal =
   let augment ti prices =
     calcTI ti prices |> List.zip prices
 
-  /// <summary>This function defines the bearish engulfing candlestick pattern
-  /// </summary>
-  /// <param name="prices">list of price bars to process</param>
-  /// <returns>optional pair of System.DateTime indicating the start time and
-  /// end time of the pattern if found</returns>
+  /// <summary>Type representing the interface of a signal generator expected
+  /// by the findPattern function</summary>
+  /// <param name="augment">the augment function to augment the list of price
+  /// bars expected by the function defined by the find function</param>
+  /// <param name="find">the function used to check whether the list of price
+  /// bars augmented by the augment function contains a pattern or signal at
+  /// the head of the list</param>
   ///
-  let isBearishEngulf (prices: (QuantFin.Data.Bar * float) list) n =
-    match prices with
-    | (h1, rsi1)::(h2, rsi2)::_ ->
-        if h2.o > h1.c && h2.c < h1.o &&
-          h1.o < h1.c && rsi1 > 80.0 then
-          Some (h1.d, h2.d, rsi1, rsi2, n+2) else None
-    | _ -> None
-
-  /// <summary>convenience function to calculate the n-day rsi given a list
-  /// of QuantFin.Data.Bar</summary>
-  /// <param name="n">number of days</param>
-  /// <returns>a function which calculates the n-day rsi given a list of
-  /// QuantFin.Data.Bar</returns>
-  let augmentRsi n =
-    fun prices -> augment (Rsi n) prices
-
-  let bearishEngulf = (isBearishEngulf, augmentRsi 14)
-
   type ISignalGenerator<'A, 'S> =
     abstract augment : QuantFin.Data.Bar list -> 'A list
     abstract find : 'A list -> int -> 'S option
 
-  let bearishEngulf2 = {
+  /// <summary>The find function defines the bearish engulfing candlestick
+  /// pattern.  The augment function augments the list of prices by RSI
+  /// </summary>
+  /// <param name="pList">list of price bars to process</param>
+  /// <param name="augList">list of augmented price bars</param>
+  /// <returns>optional pair of System.DateTime indicating the start time and
+  /// end time of the pattern if found</returns>
+  ///
+  let bearishEngulf = {
     new ISignalGenerator<_,_> with
       member this.augment pList = augment (Rsi 14) pList
-      member this.find augList n = isBearishEngulf augList n
+      member this.find augList n =
+        match augList with
+        | (h1, rsi1)::(h2, rsi2)::_ ->
+            if h2.o > h1.c && h2.c < h1.o &&
+              h1.o < h1.c && rsi1 > 80.0 then
+              Some (h1.d, h2.d, rsi1, rsi2, n+2) else None
+        | _ -> None
   }
-
-  let rec findPatternHelp f acc n pList =
-    match pList with
-    | [] -> List.rev acc
-    | h::t ->
-      match f pList n with
-      | Some startEndDate -> findPatternHelp f (startEndDate::acc) (n+1) t
-      | None -> findPatternHelp f acc (n+1) t
 
   /// <summary>This function finds the occurrence of price patterns as defined
   /// by the function f from the list of price data</summary>
@@ -169,10 +159,15 @@ module Signal =
   /// found</param>
   /// <returns>list of (System.DateTime*System.DateTime) pairs indicating the
   /// start and end date of all occurrences of the pattern</returns>
-  let findPattern (f, augment) prices =
-    augment prices |> findPatternHelp f [] 0
-
-  let findPattern2 (sigGen: ISignalGenerator<_,_>) prices =
+  ///
+  let findPattern (sigGen: ISignalGenerator<_,_>) prices =
+    let rec findPatternHelp f acc n pList =
+      match pList with
+      | [] -> List.rev acc
+      | h::t ->
+        match f pList n with
+        | Some startEndDate -> findPatternHelp f (startEndDate::acc) (n+1) t
+        | None -> findPatternHelp f acc (n+1) t
     sigGen.augment prices |> findPatternHelp sigGen.find [] 0
 
   let maFast n l =
