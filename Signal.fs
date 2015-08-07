@@ -25,7 +25,7 @@ module Signal =
     let augmented = augment prices
     let rec findPatternHelp f acc n prices =
       match prices with
-      | [] -> acc
+      | [] -> List.rev acc
       | h::t ->
         match f prices n with
         | Some startEndDate -> findPatternHelp f (startEndDate::acc) (n+1) t
@@ -162,7 +162,7 @@ module Signal =
 
   let bearishEngulf = (isBearishEngulf, augmentRsi 14)
 
-  let ma1 n l =
+  let maFast n l =
     let q0 = QuantFin.Queue.makeQueue n
     let f (q, a) x =
       match (QuantFin.Queue.push q x) with

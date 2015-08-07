@@ -64,14 +64,17 @@
     <Reference Include="MathNet.Numerics.FSharp">
       <HintPath>packages\MathNet.Numerics.FSharp.3.7.0\lib\net40\MathNet.Numerics.FSharp.dll</HintPath>
     </Reference>
+    <Reference Include="TWSLib">
+      <HintPath>packages\TWSLib.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="MainWindow.fs" />
     <Compile Include="Data.fs" />
     <Compile Include="Queue.fs" />
-    <Compile Include="Signal.fs" />
     <Compile Include="YahooFinance.fs" />
+    <Compile Include="Signal.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.1\Framework\v4.0\Microsoft.FSharp.Targets" />
