@@ -1,7 +1,7 @@
 ﻿namespace QuantFin
 
 module IBClient =
-    
+
   open IBApi
 
   let EWrapperImpl = {
@@ -9,44 +9,43 @@ module IBClient =
       member this.accountDownloadEnd(account: string) =
         printf "%s" account
 
-      member this.accountSummary(reqId: int, account: string, tag: string, 
-                                 value: string, currency: string) =
+      member this.accountSummary(reqId, account, tag, value, currency) =
         printf "accountSummary(%d)" reqId
 
-      member this.accountSummaryEnd(reqId: int) =
+      member this.accountSummaryEnd(reqId) =
         printf "accountSummaryEnd %d" reqId
 
-      member this.bondContractDetails(reqId: int, contract: ContractDetails) =
+      member this.bondContractDetails(reqId, contract) =
         printf "bondContractDetails(%d) %A" reqId contract
 
-      member this.commissionReport(commissionReport: CommissionReport) =
+      member this.commissionReport(commissionReport) =
         printf "commissionReport %A" commissionReport
 
       member this.connectionClosed() =
         printf "connectionClosed"
 
-      member this.contractDetails(reqId: int, contractDetails: ContractDetails) =
+      member this.contractDetails(reqId, contractDetails) =
         printf "contractDetails(%d) %A" reqId contractDetails
 
-      member this.contractDetailsEnd(reqId:int) =
+      member this.contractDetailsEnd(reqId) =
         printf "contractDetailsEnd(%d)" reqId
-      
-      member this.currentTime(time) = 
+
+      member this.currentTime(time) =
         printf "currentTime %d" time
 
-      member this.deltaNeutralValidation(reqId: int, underComp: UnderComp) =
+      member this.deltaNeutralValidation(reqId, underComp) =
         printf "deltaNeutralValidation(%d) %A" reqId underComp
 
-      member this.displayGroupList(reqId: int, group: string) =
+      member this.displayGroupList(reqId, group) =
         printf "displayGroup(%d) %s" reqId group
 
-      member this.displayGroupUpdated(reqId: int, group: string) =
+      member this.displayGroupUpdated(reqId, group) =
         printf "displayGroupUpdated(%d) %s" reqId group
 
-      member this.error(id: int, errorCode: int, errMsg: string) =
+      member this.error(id, errorCode, errMsg) =
         printf "error %d %d %s" id errorCode errMsg
 
-      member this.error(msg: string) = 
+      member this.error(msg) =
         printf "error %s" msg
 
       member this.error(e: exn) =
@@ -55,35 +54,35 @@ module IBClient =
       member this.execDetails(reqId, contract, execution) =
         printf "%d %A %A" reqId contract execution
 
-      member this.execDetailsEnd(reqId) = 
+      member this.execDetailsEnd(reqId) =
         printf "execDetailsEnd(%d)" reqId
 
-      member this.fundamentalData(reqId: int, data: string) =
+      member this.fundamentalData(reqId, data) =
         printf "fundamental data(%d) %s" reqId data
 
-      member this.historicalData(reqId, date, o, h, l, c, volume, count, 
+      member this.historicalData(reqId, date, o, h, l, c, volume, count,
                                  vwap, hasGaps) =
-        printf "historicalData(%d) %s %f %f %f %f %d %d %f %b" reqId date o h 
+        printf "historicalData(%d) %s %f %f %f %f %d %d %f %b" reqId date o h
           l c volume count vwap hasGaps
 
-      member this.historicalDataEnd(reqId, s, e) = 
+      member this.historicalDataEnd(reqId, s, e) =
         printf "historicalDataEnd(%d) %s %s" reqId s e
 
-      member this.managedAccounts(accountsList) = 
+      member this.managedAccounts(accountsList) =
         printf "%s" accountsList
 
-      member this.marketDataType(reqId, marketDataType) = 
+      member this.marketDataType(reqId, marketDataType) =
         printf "marketData(%d) %d" reqId marketDataType
 
-      member this.nextValidId(orderId) = 
+      member this.nextValidId(orderId) =
         printf "nextValidId %d" orderId
 
-      member this.openOrder(orderId, contract, order, orderState) = 
+      member this.openOrder(orderId, contract, order, orderState) =
         printf "openOrder %d %A %A %A" orderId contract order orderState
-      
-      member this.openOrderEnd() = 
+
+      member this.openOrderEnd() =
         printf "openOrderEnd"
-      
+
       member this.orderStatus(orderId, status, filled, remaining, avgPrice,
                               permId, parentId, lastPrice, clientId,
                               whyHeld) =
@@ -93,14 +92,14 @@ module IBClient =
       member this.position(account, contract, pos, avgCost) =
         printf "position %s %A %d %f" account contract pos avgCost
 
-      member this.positionEnd() = 
+      member this.positionEnd() =
         printf "positionEnd"
 
       member this.realtimeBar(reqId, time, o, h, l, c, v, vwap, count) =
         printf "realtimeBar(%d) %d %f %f %f %f %d %f %d" reqId time
           o h l c v vwap count
 
-      member this.receiveFA(faDataType, faXmlData) = 
+      member this.receiveFA(faDataType, faXmlData) =
         printf "receiveFA %d %s" faDataType faXmlData
 
       member this.scannerData(reqId, rank, contractDetails, distance,
@@ -108,10 +107,10 @@ module IBClient =
         printf "scannerData(%d) %d %A %s %s %s %s" reqId rank contractDetails
           distance benchmark projection legStr
 
-      member this.scannerDataEnd(reqId) = 
+      member this.scannerDataEnd(reqId) =
         printf "scannerDataEnd(%d)" reqId
 
-      member this.scannerParameters(xml) = 
+      member this.scannerParameters(xml) =
         printf "scannerParameters %s" xml
 
       member this.tickEFP(tickerId, tickType, basisPoints, formattedBasisPoints,
@@ -175,7 +174,3 @@ module IBClient =
       member this.verifyMessageAPI(apiData) =
         printf "verifyMessageAPI %s" apiData
   }
-  
-
-
- 
