@@ -7,6 +7,8 @@
     <OutputType>WinExe</OutputType>
     <RootNamespace>QuantFin</RootNamespace>
     <AssemblyName>QuantFin</AssemblyName>
+    <ReferencePath>
+    </ReferencePath>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <DebugSymbols>true</DebugSymbols>
@@ -28,28 +30,56 @@
     <DefineConstants>
     </DefineConstants>
   </PropertyGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.1\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="MainWindow.fs" />
+    <Compile Include="Data.fs" />
+    <Compile Include="Queue.fs" />
+    <Compile Include="YahooFinance.fs" />
+    <Compile Include="Signal.fs" />
+    <Compile Include="IBClient.fs" />
+    <Compile Include="Main.fs" />
+    <None Include="packages.config" />
+    <Content Include="app.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="atk-sharp">
+      <HintPath>packages\GtkSharp.3.1.2\lib\net45\atk-sharp.dll</HintPath>
+    </Reference>
+    <Reference Include="cairo-sharp">
+      <HintPath>packages\GtkSharp.3.1.2\lib\net45\cairo-sharp.dll</HintPath>
+    </Reference>
+    <Reference Include="FSharp.Charting.Gtk">
+      <HintPath>packages\FSharp.Charting.Gtk.0.90.12\lib\net40\FSharp.Charting.Gtk.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="gdk-sharp">
+      <HintPath>packages\GtkSharp.3.1.2\lib\net45\gdk-sharp.dll</HintPath>
+    </Reference>
+    <Reference Include="gio-sharp">
+      <HintPath>packages\GtkSharp.3.1.2\lib\net45\gio-sharp.dll</HintPath>
+    </Reference>
+    <Reference Include="glib-sharp">
+      <HintPath>packages\GtkSharp.3.1.2\lib\net45\glib-sharp.dll</HintPath>
+    </Reference>
+    <Reference Include="gtk-sharp">
+      <HintPath>packages\GtkSharp.3.1.2\lib\net45\gtk-sharp.dll</HintPath>
+    </Reference>
     <Reference Include="mscorlib" />
+    <Reference Include="OxyPlot">
+      <HintPath>packages\FSharp.Charting.Gtk.0.90.12\lib\net40\OxyPlot.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="OxyPlot.GtkSharp">
+      <HintPath>packages\FSharp.Charting.Gtk.0.90.12\lib\net40\OxyPlot.GtkSharp.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="pango-sharp">
+      <HintPath>packages\GtkSharp.3.1.2\lib\net45\pango-sharp.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="gtk-sharp, Version=2.4.0.0, Culture=neutral, PublicKeyToken=35e10195dab3c99f">
-      <SpecificVersion>False</SpecificVersion>
-    </Reference>
-    <Reference Include="gdk-sharp, Version=2.4.0.0, Culture=neutral, PublicKeyToken=35e10195dab3c99f">
-      <SpecificVersion>False</SpecificVersion>
-    </Reference>
-    <Reference Include="glib-sharp, Version=2.4.0.0, Culture=neutral, PublicKeyToken=35e10195dab3c99f">
-      <SpecificVersion>False</SpecificVersion>
-    </Reference>
-    <Reference Include="glade-sharp, Version=2.4.0.0, Culture=neutral, PublicKeyToken=35e10195dab3c99f">
-      <SpecificVersion>False</SpecificVersion>
-    </Reference>
-    <Reference Include="pango-sharp, Version=2.4.0.0, Culture=neutral, PublicKeyToken=35e10195dab3c99f">
-      <SpecificVersion>False</SpecificVersion>
-    </Reference>
-    <Reference Include="atk-sharp, Version=2.4.0.0, Culture=neutral, PublicKeyToken=35e10195dab3c99f">
-      <SpecificVersion>False</SpecificVersion>
-    </Reference>
     <Reference Include="FSharp.Data">
       <HintPath>packages\FSharp.Data.2.2.5\lib\net40\FSharp.Data.dll</HintPath>
     </Reference>
@@ -67,18 +97,5 @@
     <Reference Include="TWSLib">
       <HintPath>packages\TWSLib.dll</HintPath>
     </Reference>
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="MainWindow.fs" />
-    <Compile Include="Data.fs" />
-    <Compile Include="Queue.fs" />
-    <Compile Include="YahooFinance.fs" />
-    <Compile Include="Signal.fs" />
-    <Compile Include="Main.fs" />
-  </ItemGroup>
-  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.1\Framework\v4.0\Microsoft.FSharp.Targets" />
-  <ItemGroup>
-    <None Include="packages.config" />
   </ItemGroup>
 </Project>
