@@ -4,11 +4,13 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
     <ProjectGuid>{C59BFD10-0F9B-4503-976A-DD9A91B3051E}</ProjectGuid>
-    <OutputType>WinExe</OutputType>
+    <OutputType>Library</OutputType>
     <RootNamespace>QuantFin</RootNamespace>
     <AssemblyName>QuantFin</AssemblyName>
     <ReferencePath>
     </ReferencePath>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <DebugSymbols>true</DebugSymbols>
@@ -17,7 +19,7 @@
     <DefineConstants>DEBUG</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <ConsolePause>false</ConsolePause>
-    <PlatformTarget>x86</PlatformTarget>
+    <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
     <DebugSymbols>false</DebugSymbols>
@@ -33,69 +35,70 @@
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="MainWindow.fs" />
+    <Compile Include="Util.fs" />
     <Compile Include="Data.fs" />
     <Compile Include="Queue.fs" />
     <Compile Include="YahooFinance.fs" />
     <Compile Include="Signal.fs" />
     <Compile Include="IBClient.fs" />
-    <Compile Include="Main.fs" />
-    <None Include="packages.config" />
     <Content Include="app.config" />
+    <Content Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="atk-sharp">
-      <HintPath>packages\GtkSharp.3.1.2\lib\net45\atk-sharp.dll</HintPath>
-    </Reference>
-    <Reference Include="cairo-sharp">
-      <HintPath>packages\GtkSharp.3.1.2\lib\net45\cairo-sharp.dll</HintPath>
-    </Reference>
-    <Reference Include="FSharp.Charting.Gtk">
-      <HintPath>packages\FSharp.Charting.Gtk.0.90.12\lib\net40\FSharp.Charting.Gtk.dll</HintPath>
+    <Reference Include="Deedle">
+      <HintPath>packages\Deedle.1.2.5\lib\net40\Deedle.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="gdk-sharp">
-      <HintPath>packages\GtkSharp.3.1.2\lib\net45\gdk-sharp.dll</HintPath>
+    <Reference Include="FSharp.Core, Version=4.4.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <Private>True</Private>
     </Reference>
-    <Reference Include="gio-sharp">
-      <HintPath>packages\GtkSharp.3.1.2\lib\net45\gio-sharp.dll</HintPath>
+    <Reference Include="FSharp.Data">
+      <HintPath>packages\FSharp.Data.2.3.1\lib\net40\FSharp.Data.dll</HintPath>
+      <Private>True</Private>
     </Reference>
-    <Reference Include="glib-sharp">
-      <HintPath>packages\GtkSharp.3.1.2\lib\net45\glib-sharp.dll</HintPath>
+    <Reference Include="FsUnit.NUnit">
+      <HintPath>packages\FsUnit.2.3.2\lib\net45\FsUnit.NUnit.dll</HintPath>
+      <Private>True</Private>
     </Reference>
-    <Reference Include="gtk-sharp">
-      <HintPath>packages\GtkSharp.3.1.2\lib\net45\gtk-sharp.dll</HintPath>
+    <Reference Include="MathNet.Numerics">
+      <HintPath>packages\MathNet.Numerics.3.13.1\lib\net40\MathNet.Numerics.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="MathNet.Numerics.FSharp">
+      <HintPath>packages\MathNet.Numerics.FSharp.3.13.1\lib\net40\MathNet.Numerics.FSharp.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />
-    <Reference Include="OxyPlot">
-      <HintPath>packages\FSharp.Charting.Gtk.0.90.12\lib\net40\OxyPlot.dll</HintPath>
+    <Reference Include="NHamcrest">
+      <HintPath>packages\FsUnit.2.3.2\lib\net45\NHamcrest.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="OxyPlot.GtkSharp">
-      <HintPath>packages\FSharp.Charting.Gtk.0.90.12\lib\net40\OxyPlot.GtkSharp.dll</HintPath>
+    <Reference Include="nunit.core">
+      <HintPath>packages\NUnitTestAdapter.2.0.0\lib\nunit.core.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="nunit.core.interfaces">
+      <HintPath>packages\NUnitTestAdapter.2.0.0\lib\nunit.core.interfaces.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="nunit.framework">
+      <HintPath>packages\NUnit.3.5.0\lib\net45\nunit.framework.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="pango-sharp">
-      <HintPath>packages\GtkSharp.3.1.2\lib\net45\pango-sharp.dll</HintPath>
+    <Reference Include="nunit.util">
+      <HintPath>packages\NUnitTestAdapter.2.0.0\lib\nunit.util.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="NUnit.VisualStudio.TestAdapter">
+      <HintPath>packages\NUnitTestAdapter.2.0.0\lib\NUnit.VisualStudio.TestAdapter.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="FSharp.Data">
-      <HintPath>packages\FSharp.Data.2.2.5\lib\net40\FSharp.Data.dll</HintPath>
-    </Reference>
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Numerics" />
-    <Reference Include="MathNet.Numerics">
-      <HintPath>packages\MathNet.Numerics.3.7.0\lib\net40\MathNet.Numerics.dll</HintPath>
-    </Reference>
-    <Reference Include="FSharp.Core">
-      <HintPath>packages\FSharp.Core.3.1.2.1\lib\net40\FSharp.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="MathNet.Numerics.FSharp">
-      <HintPath>packages\MathNet.Numerics.FSharp.3.7.0\lib\net40\MathNet.Numerics.FSharp.dll</HintPath>
-    </Reference>
     <Reference Include="TWSLib">
-      <HintPath>packages\TWSLib.dll</HintPath>
+      <HintPath>..\..\TWSAPI\source\csharpclient\bin\x64\Debug\TWSLib.dll</HintPath>
     </Reference>
   </ItemGroup>
 </Project>
