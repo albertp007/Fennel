@@ -1,8 +1,9 @@
 namespace QuantFin
 
-open QuantFin.Data
-
 module YahooFinance =
+
+  open System
+
   ///
   /// This is a type alias for the static CsvProvider type to use to retrieve
   /// csv output returned from Yahoo Finance historical prices url.
@@ -10,6 +11,8 @@ module YahooFinance =
   ///
   type Prices = FSharp.Data.CsvProvider<"Date(date), Open(float), \
   High(float), Low(float), Close(float), Volume(int64), AdjClose(float)">
+
+  type Price = Prices.Row
 
   /// This is a private binding for a string print formatter to create the url
   /// to retrieve historical prices from Yahoo Finance from a certain start
@@ -33,20 +36,10 @@ module YahooFinance =
   /// the start date</param>
   /// <returns>the URL as a string</returns>
   ///
-  let makeUrl stockCode startDateOption =
+  let makeUrl stockCode (startDateOption: DateTime option) =
     match startDateOption with
     | None -> urlFormat stockCode
-    | Some startDate -> let dt = System.DateTime.Parse startDate
-                        urlFormatFromDate stockCode (dt.Month - 1) dt.Day
-                          dt.Year
-
-  /// <summary>Converts the CsvProvider Row data structure to QuantFin.Data.Bar
-  /// </summary>
-  /// <param name="p">Prices.Row</param>
-  /// <returns>a QuantFin.Data.Bar record</returns>
-  let toBar (p: Prices.Row) =
-    { h = p.High; l = p.Low; o = p.Open; c = p.Close; v = p.Volume;
-      adj = Some p.AdjClose; d = p.Date }
+    | Some dt -> urlFormatFromDate stockCode (dt.Month - 1) dt.Day dt.Year
 
   /// <summary>This function downloads historical prices using a CsvProvider
   /// with schema representing the csv output from Yahoo Finance</summary>
@@ -56,10 +49,11 @@ module YahooFinance =
   /// <returns>CsvProvider object with the date, open, high, low, close,
   /// volume and adjusted close prices in each row</returns>
   ///
-  let downloadHistFromDate startDateOption stockCode  =
+  let downloadHistFromDate startDateOption stockCode: Map<DateTime, Price> =
     let url = makeUrl stockCode startDateOption
     let prices = Prices.Load url
-    prices.Rows |> Seq.map toBar |> Seq.toList |> List.rev
+    // YahooPrices.Rows |> Seq.map toBar |> Seq.toList |> List.rev
+    prices.Rows |> Seq.map (fun r -> r.Date, r) |> Map.ofSeq
 
   /// <summary>This function simply curries downloadHistFromDate with the
   /// optional startDate set to None</summary>
