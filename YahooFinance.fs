@@ -69,10 +69,14 @@ module YahooFinance =
             |> Frame.ofRecords
             |> Frame.indexColsWith prices.Headers.Value
             |> Frame.indexRowsDate "Date"
+            |> Frame.sortRowsByKey
+            |> Frame.filterRows (fun _ r -> r?Volume > 0.0)
     // Remove spaces from all column keys
     f.ColumnKeys
-    |> Seq.iter (fun k -> if k.Contains(" ") then 
-                            f.RenameColumn(k, k.Replace(" ", "")))
+    |> Seq.iter (
+        fun k -> 
+          if k.Contains(" ") then 
+            f.RenameColumn(k, k.Replace(" ", "")))
     f
     
   /// <summary>This function simply curries downloadHistFromDate with the
