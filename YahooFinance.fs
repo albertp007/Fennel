@@ -3,6 +3,18 @@ namespace QuantFin
 module YahooFinance =
 
   open System
+  open Deedle
+
+  /// <summary>
+  /// Type representing the fields of a candle bar
+  /// </summary>
+  type IBar =
+    abstract Open: float
+    abstract High: float
+    abstract Low: float
+    abstract Close: float
+    abstract Volume: int64
+    abstract AdjClose: float
 
   ///
   /// This is a type alias for the static CsvProvider type to use to retrieve
@@ -49,12 +61,20 @@ module YahooFinance =
   /// <returns>CsvProvider object with the date, open, high, low, close,
   /// volume and adjusted close prices in each row</returns>
   ///
-  let downloadHistFromDate startDateOption stockCode: Map<DateTime, Price> =
+  let downloadHistFromDate startDateOption stockCode =
     let url = makeUrl stockCode startDateOption
     let prices = Prices.Load url
-    // YahooPrices.Rows |> Seq.map toBar |> Seq.toList |> List.rev
-    prices.Rows |> Seq.map (fun r -> r.Date, r) |> Map.ofSeq
-
+    // prices.Rows |> Seq.map (fun r -> r.Date, r) |> Map.ofSeq
+    let f = prices.Rows
+            |> Frame.ofRecords
+            |> Frame.indexColsWith prices.Headers.Value
+            |> Frame.indexRowsDate "Date"
+    // Remove spaces from all column keys
+    f.ColumnKeys
+    |> Seq.iter (fun k -> if k.Contains(" ") then 
+                            f.RenameColumn(k, k.Replace(" ", "")))
+    f
+    
   /// <summary>This function simply curries downloadHistFromDate with the
   /// optional startDate set to None</summary>
   /// <param name="stockCode">Reuters code of the stock</param>
@@ -62,3 +82,10 @@ module YahooFinance =
   /// volume and adjusted close prices in each row</returns>
   ///
   let downloadHist = downloadHistFromDate None
+
+  /// <summary>
+  /// Convert all rows of the data frame representing the prices coming back
+  /// from Yahoo Finance into a series of IBar
+  /// </summary>
+  /// <param name="f"></param>
+  let asBars (f: Frame<DateTime, string>) = f.GetRowsAs<IBar>()
