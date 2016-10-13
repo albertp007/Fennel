@@ -1,15 +1,19 @@
 namespace QuantFin
 
+open Deedle
+open System
+open NUnit.Framework
+open FsUnit
+
 module Signal =
+
+  type PriceSeries = Series<DateTime, float>
 
   type TechnicalIndicator =
     | Rsi of int
     | Sma of int
     | Ema of int
     | Macd of int * int * int
-    | Open
-    | Close
-    | Volume
 
   /// <summary>This function calculates the dot product of two lists of
   /// float numbers </summary>
@@ -56,29 +60,14 @@ module Signal =
   let movingAverage n lst =
     filterByFunc n (Seq.average<float>) lst |> Seq.toList
 
-  /// <summary>Calculates n day RSI given a list of bars</summary>
-  /// <param name="n">number of days</param>
-  /// <param name="prices">list of QuantFin.Data.Bars</param>
-  /// <returns>list of RSI with the first n entries being zero</returns>
-  ///
-  let rsi n (prices: QuantFin.Data.Bar list) =
-    let ma = movingAverage n
-    prices
-     // extract close prices from list of bars
-     |> List.map (fun x->x.c)
-     // calculate differences between adjacent terms
-     |> filter [-1.0; 1.0]
-     |> Seq.toList
-     // create list of pair (u, d)
-     |> List.map (fun x->if x < 0.0 then (0.0, -x) else (x, 0.0))
-     // combine into list of u and list of d
-     |> List.unzip
-     // calculate moving average of list of u and list of d
-     |> fun (u,d)->(ma u, ma d)
-     |> fun (mau, mad)->List.zip mau mad
-     |> List.map (fun (mau, mad) ->
-        let rs = if mad <= 0.0 then 0.0 else mau/mad
-        100.0 - 100.0/(1.0 + rs))
+  let unzip (s: Series<'k, 'a*'b>) =
+    let keys = s |> Series.keys
+    s
+    |> Series.values
+    |> Seq.toList
+    |> List.unzip
+    |> fun (l1, l2) -> Series.ofValues l1 |> Series.indexWith keys,
+                       Series.ofValues l2 |> Series.indexWith keys
 
   /// <summary> Calculates simple moving average of the close price given
   /// a list of bars </summary>
@@ -86,25 +75,117 @@ module Signal =
   /// <param name="prices">list of bars</param>
   /// <returns>list of floats</returns>
   ///
-  let sma n (prices: QuantFin.Data.Bar list) =
-    let ma = movingAverage n
-    prices |> List.map (fun x->x.c) |> ma |> Seq.toList
+  let sma n (prices: PriceSeries) =
+    prices |> Stats.movingMean n |> Series.dropMissing
 
+  /// <summary>
+  /// Folder function for calculating ema by using the formula
+  ///
+  /// E(n) = alpha * P(n) + (1 - alpha) * E(n-1)
+  ///
+  /// E(n) is then pushed to the head of the list which is the accumulator. In
+  /// the next iteration, the head of the list is E(n-1) and can be accessed in
+  /// constant time.  A consequence is that the accumlator contains E(n) in
+  /// reverse order and the end result needs to be reversed once to make the
+  /// ordering correct
+  /// </summary>
+  /// <param name="alpha"></param>
+  /// <param name="acc">List of E(n)</param>
+  /// <param name="price">Current price</param>
+  let emaFold alpha acc price =
+    match acc with
+    | [] -> failwith "Initial value cannot be empty. Usd SMA as the first element"
+    | h::_ as acc' -> (alpha * price + (1.0 - alpha)*h)::acc'
+
+  /// <summary>
+  /// Calculates EMA given a function for calculating alpha from the number of
+  /// periods.  
+  /// </summary>
+  /// <param name="f"></param>
+  /// <param name="n"></param>
+  /// <param name="prices"></param>
+  let emaAlpha f n prices =
+    // e0 is taken to be the simple mean of the first n elements
+    let e0 = prices |> Series.take n |> Stats.mean
+    // e0 will be included in the resulting list of numbers and to turn the
+    // list back into a deedle series, we need to get the keys from the original
+    // price series. e.g. if n = 10, the first 9 elements don't have an EMA. e0
+    // starts at the 10th element.  Therefore, skip the first 9
+    let keys = prices |> Series.skip (n-1) |> Series.keys
+    let alpha = f n
+    prices
+    |> Series.skip n  // skipping n here because the e0 is the nth one
+    |> Series.foldValues (emaFold alpha) [e0]
+    |> List.rev       // reverse the list here because of the way the fold works
+    |> Series.ofValues
+    |> Series.indexWith keys
+
+  /// <summary>
+  /// Calculates the "regular" EMA with alpha defined to be 2/(1 + n) where n
+  /// is the number of periods
+  /// </summary>
+  /// <param name="n"></param>
+  /// <param name="prices"></param>
+  let ema n prices = emaAlpha (fun n -> 2.0/(1.0 + float n)) n prices
+
+  /// <summary>
+  /// Calculates the "RSI" EMA where alpha is defined to be 1/n where n is the
+  /// number of periods
+  /// </summary>
+  /// <param name="n"></param>
+  /// <param name="prices"></param>
+  let emaRsi n prices = emaAlpha (fun n -> 1.0/float n) n prices
+
+  /// <summary>Calculates n day RSI given a list of bars</summary>
+  /// <param name="n">number of days</param>
+  /// <param name="prices">list of QuantFin.Data.Bars</param>
+  /// <returns>list of RSI with the first n entries being zero</returns>
+  ///
+  let rsi n (prices: PriceSeries) =
+    prices 
+    |> Series.pairwise
+    |> Series.mapValues (
+        fun (c0, c1) -> 
+          let delta = c1 - c0
+          if delta >= 0.0 then (delta, 0.0) else (0.0, abs delta)
+          )
+    |> unzip
+    |> fun (seriesU, seriesD) ->
+         Series.zipInner (seriesU |> emaRsi n) (seriesD |> emaRsi n)
+    |> Series.mapValues (
+         fun (mau, mad) ->
+           let rs = if mad <= 0.0 then 0.0 else mau/mad
+           100.0 - 100.0/(1.0 + rs)
+        )
+   
+  /// <summary>
+  /// Calculates MACD
+  /// </summary>
+  /// <param name="n1">number of periods for macd</param>
+  /// <param name="n2">number of periods for macd</param>
+  /// <param name="s">number of periods for the smoothing signal line</param>
+  /// <param name="prices">deedle series of prices</param>
+  let macd n1 n2 s (prices: PriceSeries) =
+    let (n1', n2') = if (n1 > n2) then (n2, n1) else (n1, n2)
+    let emaN1 = prices |> ema n1'
+    let emaN2 = prices |> ema n2'
+    let macd = emaN1 - emaN2 |> Series.skip (n2' - n1') // drops missing
+    let signal = macd |> ema s
+    let divergence = macd - signal
+    divergence  |> Series.dropMissing
+    
   /// <summary>Calculates different types of technical indicators given a list
   /// of bars </summary>
   /// <param name="t">the technical indicator of type TechnicalIndicator</param>
   /// <param name="prices">the list of price bars</param>
   /// <returns>list of floats</returns>
   ///
-  let calcTI t (prices: QuantFin.Data.Bar list) =
+  let calcTI t (prices: PriceSeries) =
     match t with
-    | Rsi n -> rsi n prices
     | Sma n -> sma n prices
-    | Ema n -> sma n prices          // TODO placeholder for now
-    | Macd (a, _, _) -> sma a prices // TODO placeholder for now
-    | Open -> prices |> List.map (fun b->b.o)
-    | Close -> prices |> List.map (fun b->b.c)
-    | Volume -> prices |> List.map (fun b->float b.v)
+    | Ema n -> ema n prices
+    | Rsi n -> rsi n prices
+    | Macd (a, b, c) -> macd a b c prices
 
   /// <summary>Augments the list of price bars with one technical indicator
   /// </summary>
@@ -114,8 +195,7 @@ module Signal =
   /// <returns>list of tuple of price bar and float which is the value of the
   /// technical indicator calculated</returns>
   ///
-  let augment ti prices =
-    calcTI ti prices |> List.zip prices
+  let augment ti prices = calcTI ti prices |> Series.values
 
   /// <summary>Type representing the interface of a signal generator expected
   /// by the findPattern function</summary>
@@ -126,7 +206,7 @@ module Signal =
   /// the head of the list</param>
   ///
   type ISignalGenerator<'A, 'S> =
-    abstract augment : QuantFin.Data.Bar list -> 'A list
+    abstract augment : PriceSeries -> 'A list
     abstract find : 'A list -> int -> 'S option
 
   /// <summary>The find function defines the bearish engulfing candlestick
@@ -137,17 +217,17 @@ module Signal =
   /// <returns>optional pair of System.DateTime indicating the start time and
   /// end time of the pattern if found</returns>
   ///
-  let bearishEngulf = {
-    new ISignalGenerator<_,_> with
-      member this.augment pList = augment (Rsi 14) pList
-      member this.find augList n =
-        match augList with
-        | (h1, rsi1)::(h2, rsi2)::_ ->
-            if h2.o > h1.c && h2.c < h1.o &&
-              h1.o < h1.c && rsi1 > 80.0 then
-              Some (h1.d, h2.d, rsi1, rsi2, n+2) else None
-        | _ -> None
-  }
+//  let bearishEngulf = {
+//    new ISignalGenerator<_,_> with
+//      member this.augment pList = augment (Rsi 14) pList
+//      member this.find augList n =
+//        match augList with
+//        | (h1, rsi1)::(h2, rsi2)::_ ->
+//            if h2.o > h1.c && h2.c < h1.o &&
+//              h1.o < h1.c && rsi1 > 80.0 then
+//              Some (h1.d, h2.d, rsi1, rsi2, n+2) else None
+//        | _ -> None
+//  }
 
   /// <summary>This function finds the occurrence of price patterns as defined
   /// by the function f from the list of price data</summary>
@@ -184,3 +264,19 @@ module Signal =
           else
             ((q', 0.0), 0.0)
     QuantFin.Data.foldState f (q0, 0.0) [] l
+
+    
+  [<TestCase()>]
+  let ``EMA``() =
+    let v = [22.27; 22.19; 22.08; 22.17; 22.18; 22.13; 22.23; 22.43; 22.24; 
+              22.29; 22.15; 22.39; 22.38; 22.61; 23.36; 24.05; 23.75; 23.83;
+              23.95; 23.63; 23.82; 23.87; 23.65; 23.19; 23.10; 23.33; 22.68;
+              23.10; 22.40; 22.17]
+    let k = [for i in 0..(List.length v-1) -> 
+                DateTime(2010, 3, 24) + TimeSpan(i*24, 0, 0)]
+    let r = [22.22; 22.21; 22.24; 22.27; 22.33; 22.52; 22.80; 22.97; 23.13;
+              23.28; 23.34; 23.43; 23.51; 23.54; 23.47; 23.40; 23.39; 23.26; 
+              23.23; 23.08; 22.92]
+    let e = v |> Series.ofValues |> Series.indexWith k |> ema 10
+    printfn "test: %f expected: %f" (e |> Series.lastValue) (r |> List.last)
+    e |> Series.lastValue |> should (equalWithin 0.01) (r |> List.last)
