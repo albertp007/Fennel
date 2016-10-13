@@ -796,29 +796,29 @@ module IBClient =
       let r = client.ReqIDs()
       printfn "%A" r
 
-    [<TestCase("127.0.0.1", 4002, 0, 0)>]
-    [<TestCase("127.0.0.1", 4002, 1, 0)>]
-    [<TestCase("127.0.0.1", 4002, 0, 1)>]
-    [<TestCase("127.0.0.1", 4002, 1, 1)>]
-    let ``Send IOC Order``(host, port, side, ordType) =
-      let contract = makeContract "USD" "CASH" "JPY" "IDEALPRO" ""
-      let minTick = 0.005
-      let minQty = 25000
-      use client = new SyncClient()
-      client.Connect host port
-      client.IsConnected() |> should equal true
-      let m = contract |> client.ReqMktDataSnapshot |> getTickMap
-      printTickMap m
-      let bid = m.Item (TickType.BID)
-      let ask = m.Item (TickType.ASK)
-      let ordSide = if side = 0 then Buy else Sell
-      let v = if side = 0 then ask.Value else bid.Value
-      let px = if side = 0 then roundUp v minTick else roundDown v minTick
-      let s = sprintf "side: %A, price: %f, order px: %f" ordSide v px
-      printfn "%s" s
-      let otype = if ordType = 0 then IOC else Market
-      let r = client.SendOrder ordSide otype contract minQty px
-      printfn "%A" r
+//    [<TestCase("127.0.0.1", 4002, 0, 0)>]
+//    [<TestCase("127.0.0.1", 4002, 1, 0)>]
+//    [<TestCase("127.0.0.1", 4002, 0, 1)>]
+//    [<TestCase("127.0.0.1", 4002, 1, 1)>]
+//    let ``Send IOC Order``(host, port, side, ordType) =
+//      let contract = makeContract "USD" "CASH" "JPY" "IDEALPRO" ""
+//      let minTick = 0.005
+//      let minQty = 25000
+//      use client = new SyncClient()
+//      client.Connect host port
+//      client.IsConnected() |> should equal true
+//      let m = contract |> client.ReqMktDataSnapshot |> getTickMap
+//      printTickMap m
+//      let bid = m.Item (TickType.BID)
+//      let ask = m.Item (TickType.ASK)
+//      let ordSide = if side = 0 then Buy else Sell
+//      let v = if side = 0 then ask.Value else bid.Value
+//      let px = if side = 0 then roundUp v minTick else roundDown v minTick
+//      let s = sprintf "side: %A, price: %f, order px: %f" ordSide v px
+//      printfn "%s" s
+//      let otype = if ordType = 0 then IOC else Market
+//      let r = client.SendOrder ordSide otype contract minQty px
+//      printfn "%A" r
       
     [<TestCase(1, "D")>]
     [<TestCase(30, "S")>]
