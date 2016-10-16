@@ -14,6 +14,7 @@ module Signal =
     | Sma of int
     | Ema of int
     | Macd of int * int * int
+    | Stochastic of int * int * int
 
   /// <summary>This function calculates the dot product of two lists of
   /// float numbers </summary>
@@ -60,6 +61,11 @@ module Signal =
   let movingAverage n lst =
     filterByFunc n (Seq.average<float>) lst |> Seq.toList
 
+  /// <summary>
+  /// Similar to the unzip function in the List module, this function returns
+  /// a pair of series given a series of pairs
+  /// </summary>
+  /// <param name="s"></param>
   let unzip (s: Series<'k, 'a*'b>) =
     let keys = s |> Series.keys
     s
@@ -75,7 +81,7 @@ module Signal =
   /// <param name="prices">list of bars</param>
   /// <returns>list of floats</returns>
   ///
-  let sma n (prices: PriceSeries) =
+  let sma n (prices: PriceSeries) = 
     prices |> Stats.movingMean n |> Series.dropMissing
 
   /// <summary>
@@ -173,7 +179,54 @@ module Signal =
     let signal = macd |> ema s
     let divergence = macd - signal
     divergence  |> Series.dropMissing
-    
+
+  /// <summary>
+  /// Calculates Slow Stochastics.  Unlike other technical indicator calculator
+  /// function, this function returns a data frame instead of just one single
+  /// series
+  /// </summary>
+  /// <param name="n1"></param>
+  /// <param name="n2"></param>
+  /// <param name="n3"></param>
+  /// <param name="prices"></param>
+  let stochastic n1 n2 n3 (prices: PriceSeries) =
+    let percK = 
+      prices
+      |> Series.window n1
+      |> Series.map (fun _ w -> w |> Stats.min, w |> Stats.max, 
+                                w |> Series.lastValue)
+      |> Series.map (
+           fun _ ((Some min), (Some max), close) -> (close - min)/(max - min))
+    let percD = percK |> sma n2
+    let percSlowD = percD |> sma n3
+    [percD; percSlowD]
+
+  /// <summary>
+  /// This function defines the name of each of the series returned by the
+  /// calculation of all the technical indicators
+  /// </summary>
+  /// <param name="t"></param>
+  /// <returns>List of names of each of the series of an indicator</returns>
+  let tiName t =
+    match t with
+    | Sma n -> [sprintf "SMA_%d" n]
+    | Ema n -> [sprintf "EMA_%d" n]
+    | Rsi n -> [sprintf "RSI_%d" n]
+    | Macd (a, b, c) -> [sprintf "MACD_%d_%d_%d" a b c]
+    | Stochastic (a, b, c) -> [sprintf "STOCH_%d_%d_%d_D" a b c;
+                               sprintf "STOCH_%d_%d_%d_SlowD" a b c]
+
+  /// <summary>
+  /// Create a data frame given a list of names and a list of series. Both lists
+  /// must be of the same size.  Each of the element in the name list
+  /// corresponds to the column name of each of the column in the column list
+  /// </summary>
+  /// <param name="colNames"></param>
+  /// <param name="seriesList"></param>
+  let makeFrameFromSeries colNames seriesList =
+    List.zip colNames seriesList
+    |> Frame.ofColumns
+        
   /// <summary>Calculates different types of technical indicators given a list
   /// of bars </summary>
   /// <param name="t">the technical indicator of type TechnicalIndicator</param>
@@ -181,11 +234,14 @@ module Signal =
   /// <returns>list of floats</returns>
   ///
   let calcTI t (prices: PriceSeries) =
+    let names = t |> tiName
     match t with
-    | Sma n -> sma n prices
-    | Ema n -> ema n prices
-    | Rsi n -> rsi n prices
-    | Macd (a, b, c) -> macd a b c prices
+    | Sma n -> [sma n prices]
+    | Ema n -> [ema n prices]
+    | Rsi n -> [rsi n prices]
+    | Macd (a, b, c) -> [macd a b c prices]
+    | Stochastic (a, b, c) -> stochastic a b c prices // func returns a list
+    |> makeFrameFromSeries names
 
   /// <summary>Augments the list of price bars with one technical indicator
   /// </summary>
@@ -195,7 +251,11 @@ module Signal =
   /// <returns>list of tuple of price bar and float which is the value of the
   /// technical indicator calculated</returns>
   ///
-  let augment ti prices = calcTI ti prices |> Series.values
+  let augment ti field priceFrame = 
+    priceFrame
+    |> Frame.getCol field
+    |> calcTI ti
+    |> Frame.join JoinKind.Left priceFrame
 
   /// <summary>Type representing the interface of a signal generator expected
   /// by the findPattern function</summary>
