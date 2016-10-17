@@ -23,8 +23,17 @@ module YahooFinance =
   ///
   type Prices = FSharp.Data.CsvProvider<"Date(date), Open(float), \
   High(float), Low(float), Close(float), Volume(int64), AdjClose(float)">
-
   type Price = Prices.Row
+
+  /// <summary>
+  /// CsvProvider type for getting the prices of the current (or last) trading
+  /// date.  The last price is used as both the close and adjusted close.  The
+  /// only difference between this schema and the schema above is in HasHeaders
+  /// </summary>
+  type Quotes = FSharp.Data.CsvProvider<Schema="Date(date), Open(float), \
+  High(float), Low(float), Close(float), Volume(int64), AdjClose(float)",
+                                        HasHeaders=false>
+  type Quote = Quotes.Row
 
   /// This is a private binding for a string print formatter to create the url
   /// to retrieve historical prices from Yahoo Finance from a certain start
@@ -48,23 +57,27 @@ module YahooFinance =
   /// the start date</param>
   /// <returns>the URL as a string</returns>
   ///
-  let makeUrl stockCode (startDateOption: DateTime option) =
+  let makeHistUrl stockCode (startDateOption: DateTime option) =
     match startDateOption with
     | None -> urlFormat stockCode
     | Some dt -> urlFormatFromDate stockCode (dt.Month - 1) dt.Day dt.Year
 
-  /// <summary>This function downloads historical prices using a CsvProvider
-  /// with schema representing the csv output from Yahoo Finance</summary>
-  /// <param name="startDateOption">String in <c>yyyy-mm-dd</c> format
-  /// representing the start date</param>
-  /// <param name="stockCode">Reuters code of the stock</param>
-  /// <returns>CsvProvider object with the date, open, high, low, close,
-  /// volume and adjusted close prices in each row</returns>
-  ///
-  let downloadHistFromDate startDateOption stockCode =
-    let url = makeUrl stockCode startDateOption
-    let prices = Prices.Load url
-    // prices.Rows |> Seq.map (fun r -> r.Date, r) |> Map.ofSeq
+  /// <summary>
+  /// Constructs the full path of the cache csv file given the stock code
+  /// </summary>
+  /// <param name="cachePath"></param>
+  /// <param name="stockCode"></param>
+  let makeCacheUrl cachePath stockCode =
+    [|cachePath; sprintf "%s.csv" stockCode|]
+    |> System.IO.Path.Combine
+    |> System.IO.Path.GetFullPath
+
+  /// <summary>
+  /// Converts a sequence of CSV rows returned by the csv provider to a deedle
+  /// data frame
+  /// </summary>
+  /// <param name="prices"></param>
+  let csvToFrame (prices: Prices) =
     let f = prices.Rows
             |> Frame.ofRecords
             |> Frame.indexColsWith prices.Headers.Value
@@ -78,7 +91,19 @@ module YahooFinance =
           if k.Contains(" ") then 
             f.RenameColumn(k, k.Replace(" ", "")))
     f
-    
+
+  /// <summary>This function downloads historical prices using a CsvProvider
+  /// with schema representing the csv output from Yahoo Finance</summary>
+  /// <param name="startDateOption">String in <c>yyyy-mm-dd</c> format
+  /// representing the start date</param>
+  /// <param name="stockCode">Reuters code of the stock</param>
+  /// <returns>CsvProvider object with the date, open, high, low, close,
+  /// volume and adjusted close prices in each row</returns>
+  ///
+  let downloadHistFromDate startDateOption stockCode =
+    let url = makeHistUrl stockCode startDateOption
+    Prices.Load url  
+   
   /// <summary>This function simply curries downloadHistFromDate with the
   /// optional startDate set to None</summary>
   /// <param name="stockCode">Reuters code of the stock</param>
@@ -86,6 +111,56 @@ module YahooFinance =
   /// volume and adjusted close prices in each row</returns>
   ///
   let downloadHist = downloadHistFromDate None
+
+  /// <summary>
+  /// This function returns historical prices for a particular stock code from
+  /// yahoo finance.  It first tries to hit the cache which is a directory
+  /// containing csv files named according to the stock code.  If the file
+  /// exists, it will read the file in, look up the latest date in the file and
+  /// try to hit the yahoo finance website for any data that is subsequent to
+  /// that date.  If any is found, it will combine the prices downloaded and
+  /// then update the cache.  If nothing is found in the cache to begin with,
+  /// it will simply download the prices from yahoo finance and then cache it
+  /// before returning them in a deedle data frame
+  /// </summary>
+  /// <param name="cacheDir"></param>
+  /// <param name="stockCode"></param>
+  let hist cacheDir stockCode =
+    let cachePath = stockCode |> makeCacheUrl cacheDir |> IO.Path.GetFullPath
+    if cachePath |> System.IO.File.Exists then
+      let cached = cachePath |> Prices.Load |> csvToFrame
+      let latestDate = (cached.RowKeys |> Seq.max) + TimeSpan(1, 0, 0, 0)
+      let missed =
+        try downloadHistFromDate (Some latestDate) stockCode |> csvToFrame
+        with
+          | _ -> Frame.CreateEmpty()
+      let combined = Frame.merge cached missed
+      if not missed.IsEmpty then
+        combined.SaveCsv cachePath
+      combined
+    else
+      let prices = downloadHist stockCode
+      if not (System.IO.Directory.Exists cacheDir) then
+        System.IO.Directory.CreateDirectory cacheDir |> ignore
+      prices.Save cachePath
+      prices |> csvToFrame
+
+  /// <summary>
+  /// Retrieves the current or last trading date quote from yahoo finance. The
+  /// last price is used as both the close and the adjusted close and constructs
+  /// a deedle data frame which is compatible with the historical price data
+  /// frame
+  /// </summary>
+  /// <param name="stockCode"></param>
+  let quote stockCode =
+    let quoteUrl = 
+      stockCode 
+      |> sprintf "http://finance.yahoo.com/d/quotes.csv?s=%s&f=d1ohgl1vl1"
+    let columns = ["Date"; "Open"; "High"; "Low"; "Close"; "Volume"; "AdjClose"]
+    let q = Quotes.Load quoteUrl
+    let f = q.Rows |> Frame.ofRecords
+    f.RenameColumns columns
+    Frame.indexRowsDate "Date" f
 
   /// <summary>
   /// Convert all rows of the data frame representing the prices coming back
