@@ -243,19 +243,31 @@ module Signal =
     | Stochastic (a, b, c) -> stochastic a b c prices // func returns a list
     |> makeFrameFromSeries names
 
-  /// <summary>Augments the list of price bars with one technical indicator
+  /// <summary>Augments the price data frame with one technical indicator using
+  /// the series specified in the 'field' argument
   /// </summary>
+  /// <param name="field">pass the series in the column with the name specified
+  /// in field to the ti calculation function</param>
   /// <param name="ti">the technical indicator of type TechnicalIndicator
   /// </param>
   /// <param name="prices">the list of price bars</param>
   /// <returns>list of tuple of price bar and float which is the value of the
   /// technical indicator calculated</returns>
   ///
-  let augment ti field priceFrame = 
+  let augmentWith field ti priceFrame = 
     priceFrame
     |> Frame.getCol field
     |> calcTI ti
     |> Frame.join JoinKind.Left priceFrame
+
+  /// <summary>
+  /// Augment the price data frame with one technical indicator using the 
+  /// close price column in the data frame, assuming it exists. Otherwise, it
+  /// throws an exception
+  /// </summary>
+  /// <param name="ti"></param>
+  /// <param name="priceFrame"></param>
+  let augment ti priceFrame = augmentWith "Close" ti priceFrame
 
   /// <summary>Type representing the interface of a signal generator expected
   /// by the findPattern function</summary>
