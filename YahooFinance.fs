@@ -133,10 +133,10 @@ module YahooFinance =
       let missed =
         try downloadHistFromDate (Some latestDate) stockCode |> csvToFrame
         with
-          | _ -> Frame.CreateEmpty()
+          | _ -> Frame.ofRows([])
       let combined = Frame.merge cached missed
       if not missed.IsEmpty then
-        combined.SaveCsv cachePath
+        combined.SaveCsv(cachePath, true, ["Date"])
       combined
     else
       let prices = downloadHist stockCode
