@@ -36,6 +36,8 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Util.fs" />
+    <Compile Include="SeriesExtension.fs" />
+    <Compile Include="FrameExtension.fs" />
     <Compile Include="Data.fs" />
     <Compile Include="Queue.fs" />
     <Compile Include="YahooFinance.fs" />
