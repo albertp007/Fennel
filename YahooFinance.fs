@@ -152,15 +152,25 @@ module YahooFinance =
   /// frame
   /// </summary>
   /// <param name="stockCode"></param>
-  let quote stockCode =
-    let quoteUrl = 
-      stockCode 
-      |> sprintf "http://finance.yahoo.com/d/quotes.csv?s=%s&f=d1ohgl1vl1"
-    let columns = ["Date"; "Open"; "High"; "Low"; "Close"; "Volume"; "AdjClose"]
-    let q = Quotes.Load quoteUrl
-    let f = q.Rows |> Frame.ofRecords
+  let quotes stockCodes =
+    let rec makeStockString names =
+      match names with
+      | [] -> ""
+      | [h] -> sprintf "%s" h
+      | h::t -> sprintf "%s+%s" h (makeStockString t)
+
+    let quoteUrl =
+      stockCodes
+      |> makeStockString
+      |> sprintf "http://finance.yahoo.com/d/quotes.csv?f=d1ohgl1vl1&s=%s"
+
+    let qs = Quotes.Load quoteUrl
+    let f = qs.Rows |> Frame.ofRecords
+    let columns = ["Date"; "Open"; "High"; "Low"; "Close"; "Volume"; "AdjClose"]   
     f.RenameColumns columns
-    Frame.indexRowsDate "Date" f
+    let qs = f |> Frame.addCol "Security" (stockCodes |> Seq.indexed |> series)
+               |> Frame.indexRowsString "Security"
+    qs?Close |> Series.observations |> Map.ofSeq
 
   /// <summary>
   /// Convert all rows of the data frame representing the prices coming back
