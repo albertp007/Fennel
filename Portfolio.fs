@@ -81,4 +81,23 @@ module Portfolio =
     |> Map.ofSeq
     |> split (mtmPrices positions)
 
+  /// <summary>
+  /// Updates the portfolio when a trade happens assuming a self-financing
+  /// portfolio.  Or if either cash or position of the security is not
+  /// sufficient to effect the trade, an exception is thrown
+  /// </summary>
+  /// <param name="security"></param>
+  /// <param name="price"></param>
+  /// <param name="qty"></param>
+  /// <param name="port"></param>
+  let trade security price qty (port: Portfolio) =
+    let (cash, positions) = port
+    let cash' = cash - (float qty) * price
+    let pos' = match Map.tryFind security positions with
+               | Some pos -> pos + qty
+               | None -> qty
+    if cash' < 0.0 then failwith (sprintf "Not enough cash to long %d units of %A@%f" qty security price)
+    if pos' < 0 then failwith (sprintf "Position %d not enough to cover qty. Long only" (pos'+qty))
+    cash - (float qty) * price, positions |> Map.add security pos'
+
 

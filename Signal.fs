@@ -4,6 +4,7 @@ open Deedle
 open System
 open NUnit.Framework
 open FsUnit
+open Portfolio
 
 module Signal =
 
@@ -241,7 +242,17 @@ module Signal =
     | Rsi n -> [rsi n prices]
     | Macd (a, b, c) -> [macd a b c prices]
     | Stochastic (a, b, c) -> stochastic a b c prices // func returns a list
-    |> makeFrameFromSeries names
+
+  /// <summary>
+  /// Merged the list of series which is the result of the calculation of the
+  /// specified technical indicators into the original price data frame
+  /// </summary>
+  /// <param name="t"></param>
+  /// <param name="prices"></param>
+  let mergeTI t (prices: PriceSeries) =
+    prices
+    |> calcTI t
+    |> makeFrameFromSeries (tiName t)
 
   /// <summary>Augments the price data frame with one technical indicator using
   /// the series specified in the 'field' argument
@@ -257,7 +268,7 @@ module Signal =
   let augmentWith field ti priceFrame = 
     priceFrame
     |> Frame.getCol field
-    |> calcTI ti
+    |> mergeTI ti
     |> Frame.join JoinKind.Left priceFrame
 
   /// <summary>
@@ -322,22 +333,98 @@ module Signal =
         | None -> findPatternHelp f acc (n+1) t
     sigGen.augment prices |> findPatternHelp sigGen.find [] 0
 
-  let maFast n l =
-    let q0 = QuantFin.Queue.makeQueue n
-    let f (q, a) x =
-      match (QuantFin.Queue.push q x) with
-      | (q', Some x') ->
-          let a' = (a*(float n)-x'+x)/(float n)
-          (q', a'), a'
-      | (q', None) ->
-          if QuantFin.Queue.size q' = QuantFin.Queue.capacity q' then
-            let a' = QuantFin.Queue.toSeq q' |> Seq.average
-            ((q', a'), a')
-          else
-            ((q', 0.0), 0.0)
-    QuantFin.Data.foldState f (q0, 0.0) [] l
 
+  /// <summary>
+  /// A crossover function meant to be generic and generate a series of signals
+  /// of +1 when the trigger line crosses the signal line from below (+ implies
+  /// a signal to long) and -1 when the trigger line crosses the signal line 
+  /// from above (- implies a signal to short).  The date in the signal series
+  /// is the date when the cross happens
+  /// </summary>
+  /// <param name="trigger">A function which takes a price data frame
+  /// and return a series which represents the trigger line</param>
+  /// <param name="signal">A function which takes a price data frame and return
+  /// a series which represents the signal line</param>
+  /// <param name="prices"></param>
+  let crossover (trigger: Frame<DateTime,string>->Series<DateTime,float>) signal
+    prices =
     
+    trigger prices - signal prices
+    |> Series.dropMissing
+    |> Series.pairwiseWith (fun _ (d1, d2) -> sign d1 = sign d2, sign d2)
+    |> Series.filterValues (fun (sameSign, _) -> not sameSign)
+    |> Series.skipWhile (fun _ (_, sgn) -> sgn < 0)
+    |> Series.mapValues snd
+
+  /// <summary>
+  /// This function takes the dates in a series of signals and generate the
+  /// price to enter into a trade using the open price of the next bar after
+  /// the signal occurs
+  /// </summary>
+  /// <param name="prices"></param>
+  /// <param name="signals"></param>
+  let nextBarOpen prices signals : Series<DateTime, float> =
+    signals
+    |> Series.keys
+    |> Frame.getNthRowAfterKeys 1 "Date" prices
+    |> Frame.getCol "Open"
+
+  /// <summary>
+  /// This is a trade generation function which updates a particular portfolio
+  /// with either a buy or a sell signal and the price of the security. If the
+  /// signal is a buy signal i.e. qty = +1, it will buy as many round-lot shares
+  /// as possible given the amount of cash in the portfolio.  Or if the qty is
+  /// negative, it will sell the whole position of that security in the 
+  /// portfolio
+  /// </summary>
+  /// <param name="security"></param>
+  /// <param name="lotsize"></param>
+  /// <param name="portfolio"></param>
+  /// <param name="qty"></param>
+  /// <param name="price"></param>
+  let buyAllSellAll security lotsize (portfolio: Portfolio) (qty, price) =
+    let allocate lotsize (price: float) (cash: float) =
+      cash / price / (float lotsize) |> int |> (*) lotsize
+    let cash, positions = portfolio
+    let qty' = 
+      if qty > 0 then allocate lotsize price cash
+      else -(getPosition portfolio security)
+    trade security price qty' portfolio
+
+  /// <summary>
+  /// A generic strategy function which takes a signal generator function, a
+  /// price generator function and a trade generator function to process the
+  /// initial portfolio with a price data frame, arriving at a series of
+  /// portfolio at different points in time when a signal occurs
+  /// </summary>
+  /// <param name="sigGen"></param>
+  /// <param name="priceGen"></param>
+  /// <param name="tradeGen"></param>
+  /// <param name="initPortfolio"></param>
+  /// <param name="prices"></param>
+  let strategy sigGen priceGen tradeGen initPortfolio prices =
+    let signals = sigGen prices
+    signals
+    |> priceGen
+    |> Series.zipInner signals
+    |> Series.scanValues tradeGen initPortfolio
+
+  /// <summary>
+  /// A crossover strategy using a near term SMA as the trigger line and a
+  /// longer term SMA as the signal line
+  /// </summary>
+  /// <param name="security"></param>
+  /// <param name="lotsize"></param>
+  /// <param name="n1"></param>
+  /// <param name="n2"></param>
+  /// <param name="initCapital"></param>
+  /// <param name="prices"></param>
+  let crossoverStrategy security lotsize n1 n2 initCapital prices =
+    let c = crossover (sma n1 |> Frame.applyClose) (sma n2 |> Frame.applyClose)
+    let pg = nextBarOpen prices
+    let tg = buyAllSellAll security lotsize 
+    strategy c pg tg (initCapital, Map.empty) prices
+
   [<TestCase()>]
   let ``EMA``() =
     let v = [22.27; 22.19; 22.08; 22.17; 22.18; 22.13; 22.23; 22.43; 22.24; 
