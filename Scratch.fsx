@@ -9,6 +9,7 @@ open QuantFin.Signal
 open QuantFin.YahooFinance
 open FSharp.Data
 open QuantFin.Util
+open QuantFin.Portfolio
 
 let genSignals n1 n2 (prices: Frame<DateTime, string>) =
   let blah = prices?Close
@@ -24,27 +25,6 @@ let genSignals n1 n2 (prices: Frame<DateTime, string>) =
   |> Series.skipWhile (fun _ (_, b) -> b = -1)
   |> Series.map (fun _ (_, sgn) -> sgn)
   
-type Portfolio = (float * Map<string, int>)
-let portValue (port: Portfolio) (prices:Map<string, float>) =
-  let (cash, positions) = port
-  positions |> Map.fold (fun acc i pos -> acc + prices.[i] * float pos) cash
-
-let getPosition (port:Portfolio) security =
-  let (_, positions) = port
-  match Map.tryFind security positions with
-  | Some pos -> pos
-  | None -> 0
-
-let trade security price qty (port: Portfolio) =
-  let (cash, positions) = port
-  let cash' = cash - (float qty) * price
-  let pos' = match Map.tryFind security positions with
-             | Some pos -> pos + qty
-             | None -> qty
-  if cash' < 0.0 then failwith (sprintf "Not enough cash to long %d units of %A@%f" qty security price)
-  if pos' < 0 then failwith (sprintf "Position %d not enough to cover qty. Long only" (pos'+qty))
-  cash - (float qty) * price, positions |> Map.add security pos'
-
 let allocate lotsize (price: float) (cash: float) =
   cash / price / (float lotsize) |> int |> (*) lotsize
 
@@ -57,7 +37,7 @@ let genTrade security lotsize (portfolio: Portfolio) (qty, price) =
     else qty * (getPosition portfolio security)
   trade security price qty' portfolio
     
-let strategy stock lotsize initCash fromDate n1 n2 =
+let strategy0 stock lotsize initCash fromDate n1 n2 =
   let prices = hist "cache" stock |> Frame.filterRows (fun d _ -> d >= fromDate)
   let signals = genSignals n1 n2 prices
   let prices' =
@@ -90,10 +70,6 @@ let positions =
    ("2669.HK", 3659)
    ("2823.HK", 8000)] |> Map.ofList
 
-let mtm (positions: Map<string, int>) =
-  let prices = positions |> Map.toSeq |> Seq.map fst |> Seq.toList |> quotes
-  positions
-  |> Map.map (fun stock pos -> prices.[stock] * (float pos))
 
 let strategyForName initCash date n1 n2 (name, lotsize) =
-  strategy name lotsize initCash date n1 n2
+  strategy0 name lotsize initCash date n1 n2
