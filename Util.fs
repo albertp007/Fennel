@@ -35,4 +35,11 @@ module Util =
     sprintf "%s - %s" (ts.ToString("dd/MMM/yyyy HH:mm:ss.fff")) msg
     |> printfn "%s"
 
+  /// <summary>
+  /// A simple function to split the input to and the result of a function into
+  /// a pair
+  /// </summary>
+  /// <param name="f"></param>
+  /// <param name="x"></param>
+  let split f x = x, f x
     
