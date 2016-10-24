@@ -113,6 +113,21 @@ module YahooFinance =
   let downloadHist = downloadHistFromDate None
 
   /// <summary>
+  /// Constructs the cache path based on cacheDir, and try to hit it for any
+  /// existing cached entries for the specified stock code. Returns a pair
+  /// made up of the data frame containing the cached prices and the full path
+  /// of the cache
+  /// </summary>
+  /// <param name="cacheDir"></param>
+  /// <param name="stockCode"></param>
+  let histCache cacheDir stockCode =
+    let cachePath = stockCode |> makeCacheUrl cacheDir |> IO.Path.GetFullPath
+    ( if cachePath |> System.IO.File.Exists then
+        cachePath |> Prices.Load |> csvToFrame
+      else
+        Frame.ofRows [] ), cachePath
+
+  /// <summary>
   /// This function returns historical prices for a particular stock code from
   /// yahoo finance.  It first tries to hit the cache which is a directory
   /// containing csv files named according to the stock code.  If the file
@@ -126,18 +141,19 @@ module YahooFinance =
   /// <param name="cacheDir"></param>
   /// <param name="stockCode"></param>
   let hist cacheDir stockCode =
-    let cachePath = stockCode |> makeCacheUrl cacheDir |> IO.Path.GetFullPath
-    if cachePath |> System.IO.File.Exists then
-      let cached = cachePath |> Prices.Load |> csvToFrame
+    let (cached, cachePath) = histCache cacheDir stockCode
+    if Frame.countRows cached > 0 then
       let latestDate = (cached.RowKeys |> Seq.max) + TimeSpan(1, 0, 0, 0)
-      let missed =
+      let latest =
         try downloadHistFromDate (Some latestDate) stockCode |> csvToFrame
         with
           | _ -> Frame.ofRows([])
-      let combined = Frame.merge cached missed
-      if not missed.IsEmpty then
+      if not latest.IsEmpty then
+        let combined = Frame.merge cached latest
         combined.SaveCsv(cachePath, true, ["Date"])
-      combined
+        combined
+      else
+        cached
     else
       let prices = downloadHist stockCode
       if not (System.IO.Directory.Exists cacheDir) then
