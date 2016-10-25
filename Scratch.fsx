@@ -73,3 +73,8 @@ let positions =
 
 let strategyForName initCash date n1 n2 (name, lotsize) =
   strategy0 name lotsize initCash date n1 n2
+
+let refreshCache positions =
+  positions
+  |> getNames
+  |> List.map (hist "cache")
