@@ -420,9 +420,10 @@ module Signal =
   /// <param name="initCapital"></param>
   /// <param name="prices"></param>
   let crossoverStrategy security lotsize n1 n2 initCapital prices =
-    let c = crossover (sma n1 |> Frame.applyClose) (sma n2 |> Frame.applyClose)
+    let c = crossover (sma n1 |> Frame.applyAdjClose) 
+              (sma n2 |> Frame.applyAdjClose)
     let tg = buyAllSellAll security lotsize 
-    strategy c nextBarOpen tg (initCapital, Map.empty) prices
+    strategy c nextBarOpen tg (cash initCapital) prices
 
   [<TestCase()>]
   let ``EMA``() =
