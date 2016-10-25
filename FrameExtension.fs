@@ -60,4 +60,11 @@
   /// <param name="f"></param>
   /// <param name="frame"></param>
   let applyVolume f frame = applyCol "Volume" f frame
+
+  /// <summary>
+  /// Apply a function to the "AdjClose" column of a frame
+  /// </summary>
+  /// <param name="f"></param>
+  /// <param name="frame"></param>
+  let applyAdjClose f frame = applyCol "AdjClose" f frame
   
