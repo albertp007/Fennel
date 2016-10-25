@@ -9,6 +9,12 @@ module Portfolio =
   type Portfolio = (float * Map<string, int>)
 
   /// <summary>
+  /// Creates a cash portfolio of the specified amount
+  /// </summary>
+  /// <param name="amt"></param>
+  let cash amt : Portfolio = (amt, Map.empty)
+
+  /// <summary>
   /// Calculates the value of a portfolio given a map of security name to price
   /// </summary>
   /// <param name="port"></param>
