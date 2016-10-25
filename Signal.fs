@@ -405,7 +405,7 @@ module Signal =
   let strategy sigGen priceGen tradeGen initPortfolio prices =
     let signals = sigGen prices
     signals
-    |> priceGen
+    |> priceGen prices
     |> Series.zipInner signals
     |> Series.scanValues tradeGen initPortfolio
 
@@ -421,9 +421,8 @@ module Signal =
   /// <param name="prices"></param>
   let crossoverStrategy security lotsize n1 n2 initCapital prices =
     let c = crossover (sma n1 |> Frame.applyClose) (sma n2 |> Frame.applyClose)
-    let pg = nextBarOpen prices
     let tg = buyAllSellAll security lotsize 
-    strategy c pg tg (initCapital, Map.empty) prices
+    strategy c nextBarOpen tg (initCapital, Map.empty) prices
 
   [<TestCase()>]
   let ``EMA``() =
