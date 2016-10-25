@@ -115,7 +115,8 @@
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Numerics" />
     <Reference Include="TWSLib">
-      <HintPath>..\..\TWSAPI\source\csharpclient\bin\Debug\TWSLib.dll</HintPath>
+      <HintPath>..\TWSAPI\source\csharpclient\bin\Debug\TWSLib.dll</HintPath>
     </Reference>
+    <Reference Include="TWSLib" />
   </ItemGroup>
 </Project>
