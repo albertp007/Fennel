@@ -197,7 +197,10 @@ module Signal =
       |> Series.map (fun _ w -> w |> Stats.min, w |> Stats.max, 
                                 w |> Series.lastValue)
       |> Series.map (
-           fun _ ((Some min), (Some max), close) -> (close - min)/(max - min))
+           fun _ (min, max, close) -> 
+             match (min, max) with
+             | Some min', Some max' -> (close - min')/(max' - min')
+             | _ -> failwith "Weird, no min max found" )
     let percD = percK |> sma n2
     let percSlowD = percD |> sma n3
     [percD; percSlowD]

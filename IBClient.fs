@@ -260,6 +260,30 @@ module IBClient =
     | OrderStatus of OrderStatus
     | Position of PositionEntry list
 
+    static member accountSummary response =
+      match response with
+      | AccountSummary a -> a
+      | _ -> failwith "Expecting AccountSummary response type"
+
+    static member tick response =
+      match response with
+      | Tick t -> t
+      | _ -> failwith "Expecting Tick response type"
+
+    static member historicalData response =
+      match response with
+      | HistoricalData h -> h
+      | _ -> failwith "Expecting HistoricalData response type"
+
+    static member position response =
+      match response with
+      | Position p -> p
+      | _ -> failwith "Expecting Position response type"
+
+    static member orderStatus response =
+      match response with
+      | OrderStatus s -> s
+      | _ -> failwith "Expecting OrderStatus response type"
 
   /// <summary>
   /// Create an IBApi Contract object
@@ -839,8 +863,9 @@ module IBClient =
       use client = new SyncClient()
       client.Connect host port
       if client.IsConnected() then
-        let (Position pos) = client.ReqPositions()
-        pos |> List.iter (fun e -> sprintf "%s %s %s %s %d %f" e.Account 
-                                     e.Contract.Symbol e.Contract.Expiry
-                                     e.Contract.Currency
-                                     e.Pos e.AvgCost |> printf "%s")
+        client.ReqPositions()
+        |> Response.position
+        |> List.iter (fun e -> sprintf "%s %s %s %s %d %f" e.Account 
+                                 e.Contract.Symbol e.Contract.Expiry
+                                 e.Contract.Currency
+                                 e.Pos e.AvgCost |> printf "%s")
