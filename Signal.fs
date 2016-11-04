@@ -336,6 +336,7 @@ module Signal =
         | None -> findPatternHelp f acc (n+1) t
     sigGen.augment prices |> findPatternHelp sigGen.find [] 0
 
+  type Signal = Entry | Exit | Hold
 
   /// <summary>
   /// A crossover function meant to be generic and generate a series of signals
@@ -351,13 +352,48 @@ module Signal =
   /// <param name="prices"></param>
   let crossover (trigger: Frame<DateTime,string>->Series<DateTime,float>) signal
     prices =
-    
-    trigger prices - signal prices
-    |> Series.dropMissing
-    |> Series.pairwiseWith (fun _ (d1, d2) -> sign d1 = sign d2, sign d2)
-    |> Series.filterValues (fun (sameSign, _) -> not sameSign)
-    |> Series.skipWhile (fun _ (_, sgn) -> sgn < 0)
-    |> Series.mapValues snd
+      trigger prices - signal prices
+      |> Series.dropMissing
+      |> Series.pairwiseWith (fun _ (d1, d2) -> sign d1 = sign d2, sign d2)
+      |> Series.filterValues (fun (sameSign, _) -> not sameSign)
+      |> Series.skipWhile (fun _ (_, sgn) -> sgn < 0)
+      |> Series.mapValues snd
+
+  type OscValue = Oversold | Neutral | Overbought
+  type OscState = Init | OversoldFound | NeutralFound
+
+  let foldOsc (state, acc) (d, v) =
+    match state with
+    | Init ->
+        match v with
+        | Oversold -> (OversoldFound, acc)
+        | _ -> (Init, acc)
+    | OversoldFound ->
+        match v with
+        | Oversold -> (OversoldFound, acc)
+        | Neutral -> (NeutralFound, (d, v)::acc)
+        | Overbought -> (Init, (d,v)::acc)
+    | NeutralFound ->
+        match v with
+        | Overbought -> (Init, (d, v)::acc)
+        | _ -> (NeutralFound, acc)
+      
+  let oscillator (signal: Frame<DateTime,string>->Series<DateTime,'b>) lower
+    upper prices =
+      prices
+      |> signal
+      |> Series.map (fun k v -> 
+        if v <= lower then k, Oversold else
+        if v >= upper then k, Overbought else k, Neutral)
+      |> Series.foldValues foldOsc (Init, [])
+      |> snd
+      |> series
+      |> Series.sortByKey
+      |> Series.map (fun _ v -> 
+        match v with
+        | Oversold -> 1
+        | Neutral -> 1
+        | Overbought -> -1 )  
 
   /// <summary>
   /// This function takes the dates in a series of signals and generate the
