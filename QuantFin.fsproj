@@ -42,6 +42,7 @@
     <Compile Include="FrameExtension.fs" />
     <Compile Include="Data.fs" />
     <Compile Include="Queue.fs" />
+    <Compile Include="ML.fs" />
     <Compile Include="Signal.fs" />
     <Compile Include="IBClient.fs" />
     <Content Include="app.config" />

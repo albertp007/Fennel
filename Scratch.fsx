@@ -2,6 +2,7 @@
 #I @"bin\Debug"
 #I @"packages"
 #r @"QuantFin.dll"
+#r @"MathNet.Numerics.dll"
 
 open System
 open Deedle
@@ -78,3 +79,9 @@ let refreshCache positions =
   positions
   |> getNames
   |> List.map (hist "cache")
+
+let linearRegress (x: Series<'a, float>) y =
+  Series.zipInner x y
+  |> Series.values
+  |> MathNet.Numerics.LinearRegression.SimpleRegression.Fit
+  
