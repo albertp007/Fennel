@@ -3,6 +3,8 @@
 #I @"packages"
 #r @"QuantFin.dll"
 #r @"MathNet.Numerics.dll"
+#r @"MathNet.Numerics.FSharp.dll"
+#r @"MathNet.Numerics.Data.Text.dll"
 
 open System
 open Deedle
@@ -11,6 +13,10 @@ open QuantFin.YahooFinance
 open FSharp.Data
 open QuantFin.Util
 open QuantFin.Portfolio
+open MathNet.Numerics.LinearAlgebra
+open MathNet.Numerics.Data.Text
+open MathNet.Numerics.Statistics
+open QuantFin.ML
 
 let genSignals n1 n2 (prices: Frame<DateTime, string>) =
   let blah = prices?Close
@@ -84,4 +90,23 @@ let linearRegress (x: Series<'a, float>) y =
   Series.zipInner x y
   |> Series.values
   |> MathNet.Numerics.LinearRegression.SimpleRegression.Fit
-  
+
+let grad f g x y = f x y, g x y
+
+let lnrGrad (theta: Vector<double>) (x: Matrix<double>) y =
+  (theta * x - y) .^ 2.0
+
+// reading a csv file
+let data = DelimitedReader.Read<float>( "/Users/panga/Dropbox/ex1data2.txt", 
+             false, ",", false)
+let m = data.RowCount
+let n = data.ColumnCount
+// append column of all 1.0 as x0
+let (mu, sigma, X') = data.[0.., 0..(n-2)] |> featureNormalize
+let X = DenseVector.create m 1.0 |> Matrix.prependCol <| X'
+let y = data.[0.., (n-1)]
+let theta0 = vector [0.0; 0.0; 0.0]
+let theta = apply (lnrTheta 0.01 X y) 1500 theta0
+applyScan (lnrTheta 0.01 X y) 1500 theta0
+let v = vector [1650.0; 3.0]
+(v - mu)/sigma |> Vector.join (vector [1.0]) |> (*) theta
