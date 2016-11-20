@@ -25,11 +25,11 @@ module ML =
   /// </summary>
   /// <param name="x"></param>
   let featureNormalize (x: Matrix<float>) =
-    let repl v = Matrix.replicateRows x.RowCount v
+    let (-) m v = Matrix.applyRowVector (-) v m
+    let (./) m v = Matrix.applyRowVector (./) v m
     let mu = x |> Matrix.aggCols Statistics.Mean
     let sigma = x |> Matrix.aggCols Statistics.StandardDeviation
-    let mu', sigma' = mu |> repl, sigma |> repl
-    mu, sigma, (x - mu') ./ sigma'
+    mu, sigma, (x - mu) ./ sigma
 
   /// <summary>
   /// The update function for updating theta when using gradient descent for
@@ -54,7 +54,7 @@ module ML =
   /// <param name="theta"></param>
   let inline lgrTheta (alpha: float) (x: Matrix<float>) (y: Vector<float>) t = 
     let m = float x.RowCount
-    let sigmoid (x:Vector<float>) = 1.0 / (1.0 + (-x).PointwiseExp())
+    let sigmoid (x:Vector<float>) = 1.0 / (1.0 + exp (-x))
     t - alpha / m * (x.Transpose()) * (sigmoid(x*t) - y)
   
   /// <summary>
