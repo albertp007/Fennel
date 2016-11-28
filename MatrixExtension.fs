@@ -6,16 +6,31 @@ module Vector =
     let v1List = v1 |> Vector.toList
     v2 |> Vector.toList |> List.append v1List |> vector
 
+  let inline sigmoid (x: Vector<float>) = 1.0 / ( 1.0 + exp (-x))
+
 module Matrix =
   let inline aggCols f m = m |> Matrix.toColSeq |> Seq.map f |> Vector.ofSeq
+
   let inline aggRows f m = m |> Matrix.toRowSeq |> Seq.map f |> Vector.ofSeq
+
   let inline replicateRows n v = v|> Vector.toList |> List.replicate n |> matrix
+
   let inline replicateCols n v = replicateRows n v |> Matrix.transpose
+
   let inline ofRowVector v = v |> replicateRows 1
+
   let inline ofColVector v = v |> replicateCols 1
+
   let inline applyRowVector op v m = 
     v |> replicateRows (Matrix.rowCount m) |> op m
+
   let inline applyColVector op v m =
     v |> replicateCols (Matrix.columnCount m) |> op m
-  
+
+  let inline prependOnes (x: Matrix<float>) =
+    DenseVector.create (x.RowCount) 1.0
+    |> Matrix.prependCol
+    <| x  
+
+  let inline sigmoid (x: Matrix<float>) = 1.0 / ( 1.0 + exp(-x) )
 
