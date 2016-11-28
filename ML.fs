@@ -63,7 +63,6 @@ module ML =
   /// <param name="th"></param>
   let lnrGrad (lambda: float) (x: Matrix<float>) (y: Vector<float>) 
       (th: Vector<float>) =
-
     let m = float x.RowCount
     let h = x * th
     let thReg = th.Clone()
@@ -74,8 +73,50 @@ module ML =
     dj, j
 
   /// <summary>
-  /// Function to evaluate the value of a logistic regression hypothesis function
-  /// and its partial derivates at a particular value of theta with regulation
+  /// Private helper function to evaluate the value of the regulated logistic 
+  /// regression cost function at a particular point.  It assumes the vector 
+  /// h(theta, x) is passed in.  This is such that in an implementation where
+  /// the cost and the gradient are to be returned at the same time, h(theta, x)
+  /// is calculated once and shared between evaluating the cost and the partial
+  /// derivatives
+  /// </summary>
+  /// <param name="lambda"></param>
+  /// <param name="h"></param>
+  /// <param name="y"></param>
+  /// <param name="theta"></param>
+  let private lgrCost0 (lambda: float) (h: Vector<float>) (y: Vector<float>) 
+      (theta: Vector<float>) =
+    // h is assumed to be sigmoid(x*theta), which is a vector
+    let m = float h.Count
+    let thReg = theta.Clone()
+    thReg.[0] <- 0.0  // assume the first element is th0 and do not regulate
+    let j0 = 1.0/m * ((-y) * (log h) - (1.0 - y)*(log (1.0 - h)))
+    j0 + lambda / 2.0 / m * ((thReg .^ 2.0) |> Vector.sum)
+
+  /// <summary>
+  /// Private helper function to evaluate the partial derivatives of the
+  /// regulated logistic regression cost function at a particular point.  It
+  /// assumes the vector h(theta, x) is passed in.  This is such that in an
+  /// implementation where the cost and the gradient are to be returned at the
+  /// same time, h(theta, x) is calculated once and shared between evaluating
+  /// the cost and the partial derivatives
+  /// </summary>
+  /// <param name="lambda"></param>
+  /// <param name="x"></param>
+  /// <param name="y"></param>
+  /// <param name="theta"></param>
+  /// <param name="h"></param>
+  let private lgrGrad0 (lambda: float) (x: Matrix<float>) (y: Vector<float>) 
+      (theta: Vector<float>) (h: Vector<float>) =
+    // h is assumed to be sigmoid(x*theta), which is a vector
+    let m = float x.RowCount
+    let thReg = theta.Clone()
+    thReg.[0] <- 0.0  // assume the first element is th0 and do not regulate
+    1.0 / m * x.Transpose() * (h - y) + lambda / m * thReg
+
+  /// <summary>
+  /// Function to evaluate the value of the regulated cost function for logistic 
+  /// regression
   ///
   /// J = 1/m * Sum (-y*log(sigmoid(X*theta))-(1-y)*(1-log(sigmoid(X*theta)))) +
   ///     lambda/2/m*(theta1^2 + ... + thetaN^2)
@@ -83,49 +124,58 @@ module ML =
   /// Note that theta0 is not included in the regulation term as theta0 is
   /// assumed to take on a constant value of 1.0.  Also, the first column of the
   /// matrix X is assumed to be the coefficients for theta0 and should be all
-  /// ones
+  /// ones.
   ///
-  /// The gradient function is:
+  /// The actual implementation is in the helper function lgrCost0.
+  /// </summary>
+  /// <param name="lambda"></param>
+  /// <param name="x"></param>
+  /// <param name="y"></param>
+  /// <param name="theta"></param>
+  let lgrCost (lambda: float) (x: Matrix<float>) (y: Vector<float>) 
+      (theta: Vector<float>) =
+    let h = Vector.sigmoid(x*theta)
+    lgrCost0 lambda h y theta
+
+  /// <summary>
+  /// Function that evaluates the partial derivates of the regulated cost 
+  /// function for logistic regression
   ///
   /// dJ/d(theta(i)) = 1 / m * sum ( (h(theta, X) - y) * x(i) ) if i = 0
   /// 
   /// dJ/d(theta(i)) = 1 / m * sum ( (h(theta, X) - y) * x(i) ) + 1/m * lambda *
   ///                   theta(i) if i > 0
   ///
-  /// where the sums in the above two formulas is summing over all the entries
-  /// in the training set (i.e. the number of rows in X) and the index i in the
-  /// gradient function ranges over the number of features
+  /// Note that theta0 is not included in the regulation term as it is assumed
+  /// to take on a constant value of 1.0.    Also, the first column of the
+  /// matrix X is assumed to be the coefficients for theta0 and should be all
+  /// ones.
+  ///
+  /// The actual implementation is in the helper function lgrGrad0.
+  /// </summary>
+  /// <param name="lambda"></param>
+  /// <param name="x"></param>
+  /// <param name="y"></param>
+  /// <param name="theta"></param>
+  let lgrGrad (lambda: float) (x: Matrix<float>) (y: Vector<float>) 
+      (theta: Vector<float>) =  
+    let h = Vector.sigmoid(x*theta)
+    lgrGrad0 lambda x y theta h
+
+  /// <summary>
+  /// Function to evaluate the value and the partial derivatives of the 
+  /// regulated cost function for logistic regression.  It simply calls
+  /// lgrCost and lgrGrad and returns a pair
   /// </summary>
   /// <param name="lambda"></param>
   /// <param name="x"></param>
   /// <param name="y"></param>
   /// <param name="th"></param>
-  let lgrGrad (lambda: float) (x: Matrix<float>) (y: Vector<float>) 
-      (th: Vector<float>) =
-  
-    let m = float x.RowCount
+  let lgrGradCost (lambda: float) (x: Matrix<float>) (y: Vector<float>) 
+      (th: Vector<float>) = 
     let h = Vector.sigmoid (x*th)
-    let thReg = th.Clone()
-    thReg.[0] <- 0.0  // assume the first element is th0 and do not regulate
-    let j0 = 1.0/m * ((-y) * (log h) - (1.0 - y)*(log (1.0 - h)))
-    let j = j0 + lambda / 2.0 / m * ((thReg .^ 2.0) |> Vector.sum)
-    let dj = 1.0 / m * x.Transpose() * (h - y) + lambda / m * thReg
-    dj, j
+    lgrGrad0 lambda x y th h, lgrCost0 lambda h y th
 
-  /// <summary>
-  /// The update function for updating theta when using gradient descent for
-  /// logistic regression
-  /// </summary>
-  /// <param name="alpha"></param>
-  /// <param name="x"></param>
-  /// <param name="y"></param>
-  /// <param name="theta"></param>
-  let inline lgrTheta (lambda: float) (alpha: float) (x: Matrix<float>) 
-    (y: Vector<float>) t = 
-
-    let m = float x.RowCount
-    t - alpha / m * (x.Transpose()) * (Vector.sigmoid (x*t) - y)
- 
   /// <summary>
   /// Apply a function on a monoid N number of times
   /// </summary>

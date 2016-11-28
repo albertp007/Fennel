@@ -78,6 +78,10 @@
       <HintPath>packages\Deedle.1.2.5\lib\net40\Deedle.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="DotNumerics">
+      <HintPath>packages\DotNumerics.1.1\lib\DotNumerics.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="FSharp.Core, Version=4.4.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <Private>True</Private>
     </Reference>
