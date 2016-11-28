@@ -85,28 +85,3 @@ let refreshCache positions =
   positions
   |> getNames
   |> List.map (hist "cache")
-
-let linearRegress (x: Series<'a, float>) y =
-  Series.zipInner x y
-  |> Series.values
-  |> MathNet.Numerics.LinearRegression.SimpleRegression.Fit
-
-let grad f g x y = f x y, g x y
-
-let lnrGrad (theta: Vector<double>) (x: Matrix<double>) y =
-  (theta * x - y) .^ 2.0
-
-// reading a csv file
-let data = DelimitedReader.Read<float>( "/Users/panga/Dropbox/ex1data2.txt", 
-             false, ",", false)
-let m = data.RowCount
-let n = data.ColumnCount
-// append column of all 1.0 as x0
-let (mu, sigma, X') = data.[0.., 0..(n-2)] |> featureNormalize
-let X = DenseVector.create m 1.0 |> Matrix.prependCol <| X'
-let y = data.[0.., (n-1)]
-let theta0 = vector [0.0; 0.0; 0.0]
-let theta = apply (lnrTheta 0.01 X y) 1500 theta0
-applyScan (lnrTheta 0.01 X y) 1500 theta0
-let v = vector [1650.0; 3.0]
-(v - mu)/sigma |> Vector.join (vector [1.0]) |> (*) theta
