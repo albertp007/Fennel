@@ -45,22 +45,11 @@ let trainGradientDescent n lambda (x: Matrix<float>) (y: Vector<float>) alpha k 
   let th0 = DenseVector.create (x.ColumnCount) 0.0
   let y1 = y |> Vector.map ((=) (float k) >> boolToFloat)
   gradientDescent n alpha (lgrGradCost lambda X y1) th0
-
-let toArrayFunc (f: Vector<float>->float) = vector >> f
-let toArrayGradFunc (f: Vector<float>->Vector<float>) =
-  vector >> f >> Vector.toArray
-    
+   
 let trainBFGS lambda (x: Matrix<float>) (y: Vector<float>) k =
-  let th0 = DenseVector.create n 0.0 |> Vector.toArray
-  // interfaces to the bfgs object via conversion to float array
+  let th0 = DenseVector.create (x.ColumnCount) 0.0
   let y' = y |> Vector.map ((=) (float k) >> boolToFloat)
-  // let f (t: float[]) = t |> vector |> lgrCost lambda x y'
-  // let g (t: float[]) = t |> vector |> lgrGrad lambda x y' |> Vector.toArray
-  let f = lgrCost lambda x y' |> toArrayFunc
-  let g = lgrGrad lambda x y' |> toArrayGradFunc
-  let optimizer = L_BFGS_B()
-  optimizer.ComputeMin( f, g, th0 )
-  |> vector
+  bfgs (lgrCost lambda x y') (lgrGrad lambda x y') th0
 
 let accuracy (y: Vector<float>) (yhat: Vector<float>) =
   let m = y.Count

@@ -2,6 +2,7 @@
 
 open MathNet.Numerics.LinearAlgebra
 open MathNet.Numerics.Statistics
+open DotNumerics.Optimization
 
 module ML =
 
@@ -209,4 +210,38 @@ module ML =
       Vector.subInPlace t (alpha * grad)
       t, j::c
     let (t, c) = [1..n] |> List.fold (fun s _ -> f s) (th, [])
-    t, List.rev c    
+    t, List.rev c
+    
+  /// <summary>
+  /// Converts a real-valued multi-variable function from vector form to float
+  /// array form
+  /// </summary>
+  /// <param name="f"></param>
+  let inline toArrayFunc (f: Vector<float>->float) = vector >> f
+
+  /// <summary>
+  /// Converts a gradient function from vector from to float array form
+  /// </summary>
+  /// <param name="f"></param>
+  let inline toArrayGradFunc (f: Vector<float>->Vector<float>) =
+    vector >> f >> Vector.toArray
+
+  /// <summary>
+  /// Calls the BFGS optimizer in DotNet Numerics with vectors in Mathnet 
+  /// Numerics.  The BFGS optimizer takes double arrays in its arguments. This
+  /// function is a helper function which converts the input from the vector
+  /// form to double arrays and converts the output of the optimizer from
+  /// double array back to vector.
+  /// </summary>
+  /// <param name="f">the function to minimize</param>
+  /// <param name="g">the gradient of the function</param>
+  /// <param name="initial">initial guess</param>
+  let bfgs (f:Vector<float>->float) (g: Vector<float>->Vector<float>) initial =
+     let f' = f |> toArrayFunc
+     let g' = g |> toArrayGradFunc
+     let optimizer = L_BFGS_B()
+     optimizer.ComputeMin( f', g', initial |> Vector.toArray )
+     |> vector
+
+
+
