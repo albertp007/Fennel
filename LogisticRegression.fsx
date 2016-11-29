@@ -59,6 +59,13 @@ let accuracy (y: Vector<float>) (yhat: Vector<float>) =
   yhat - y |> abs |> Vector.map (sign >> float) |> Vector.sum
   |> (fun f -> 1.0 - f/float m)
   
+let checkAccuracy x y (allTheta: Matrix<float>) =
+  let yhat = 
+    x * allTheta.Transpose() 
+    |> Matrix.sigmoid 
+    |> Matrix.aggRows (Vector.maxIndex >> float >> ((+) 1.0))
+  yhat |> accuracy y
+
 let allTheta =
   if System.IO.File.Exists(thetaPath) then
     MatlabReader.Read<float>(thetaPath, "allTheta")
@@ -77,15 +84,16 @@ let allThetaBfgs =
     |> matrix
 
 rand.Next(5000) |> (fun i -> X0.[i, 0..] |> predict allTheta, y.[i])
-let yhat = 
-  X * allTheta.Transpose() 
-  |> Matrix.sigmoid 
-  |> Matrix.aggRows (Vector.maxIndex >> float >> ((+) 1.0))
 
-let yhatBfgs = 
-  X * allThetaBfgs.Transpose() 
-  |> Matrix.sigmoid 
-  |> Matrix.aggRows (Vector.maxIndex >> float >> ((+) 1.0))
+allThetaBfgs |> checkAccuracy X y;;
+allTheta |> checkAccuracy X y;;
 
-yhat |> accuracy y;;
-yhatBfgs |> accuracy y;;
+let trainTask lambda (x: Matrix<float>) (y: Vector<float>) k =
+  async { return trainBFGS lambda x y k }
+
+let run() =
+  [1..10] 
+  |> List.map (trainTask lambda X y)
+  |> Async.Parallel
+  |> Async.RunSynchronously
+  |> matrix
