@@ -11,8 +11,13 @@ open MathNet.Numerics.LinearAlgebra
 open MathNet.Numerics.Data.Text
 open MathNet.Numerics.Statistics
 open MathNet.Numerics.Data.Matlab
+open MathNet.Numerics
 open DotNumerics.Optimization
 open QuantFin.ML
+open System.IO
+
+Control.NativeProviderPath <- Path.Combine [|__SOURCE_DIRECTORY__; @"bin\Debug"|]
+Control.UseNativeMKL();;
 
 let path = "/Users/panga/Dropbox/Machine Learning/machine-learning-ex3/ex3/ex3data1.mat"
 let thetaPath = "/Users/panga/Dropbox/Machine Learning/machine-learning-ex3/ex3/allTheta.mat"
@@ -20,15 +25,15 @@ let data = MatlabReader.ReadAll<double>(path)
 let X0 : Matrix<float> = data.["X"]
 let y = data.["y"].[0.., 0]
 let X = X0 |> Matrix.prependOnes
-
-let inline (.=) m f =
-    Matrix.map (((=) f) >> (fun b -> if b then 1.0 else 0.0)) m
-
 let nPatterns = 10
 let m = X.RowCount
 let n = X.ColumnCount
 let lambda = 0.1
 let alpha = 1.0
+let rand = System.Random()
+
+let inline (.=) m f =
+    Matrix.map (((=) f) >> (fun b -> if b then 1.0 else 0.0)) m
 
 let predict (allTheta: Matrix<float>) (v: Vector<float>) =
   let v' = Vector.join (vector [1.0] ) v
@@ -36,20 +41,23 @@ let predict (allTheta: Matrix<float>) (v: Vector<float>) =
   |> Vector.sigmoid
   |> (fun v -> (v |> Vector.maxIndex) + 1, v |> Vector.max)
 
-let rand = System.Random()
-
 let trainGradientDescent n lambda (x: Matrix<float>) (y: Vector<float>) alpha k =
-  let th0 = DenseVector.create n 0.0
+  let th0 = DenseVector.create (x.ColumnCount) 0.0
   let y1 = y |> Vector.map ((=) (float k) >> boolToFloat)
   gradientDescent n alpha (lgrGradCost lambda X y1) th0
 
-
+let toArrayFunc (f: Vector<float>->float) = vector >> f
+let toArrayGradFunc (f: Vector<float>->Vector<float>) =
+  vector >> f >> Vector.toArray
+    
 let trainBFGS lambda (x: Matrix<float>) (y: Vector<float>) k =
   let th0 = DenseVector.create n 0.0 |> Vector.toArray
   // interfaces to the bfgs object via conversion to float array
   let y' = y |> Vector.map ((=) (float k) >> boolToFloat)
-  let f (t: float[]) = t |> vector |> lgrCost lambda x y'
-  let g (t: float[]) = t |> vector |> lgrGrad lambda x y' |> Vector.toArray
+  // let f (t: float[]) = t |> vector |> lgrCost lambda x y'
+  // let g (t: float[]) = t |> vector |> lgrGrad lambda x y' |> Vector.toArray
+  let f = lgrCost lambda x y' |> toArrayFunc
+  let g = lgrGrad lambda x y' |> toArrayGradFunc
   let optimizer = L_BFGS_B()
   optimizer.ComputeMin( f, g, th0 )
   |> vector
