@@ -2,6 +2,7 @@
 
 open MathNet.Numerics.LinearAlgebra
 open MathNet.Numerics.Statistics
+open MathNet.Numerics.Distributions
 open DotNumerics.Optimization
 
 module ML =
@@ -243,5 +244,16 @@ module ML =
      optimizer.ComputeMin( f', g', initial |> Vector.toArray )
      |> vector
 
-
-
+  let swap i j (arr: 'a[]) =
+    let tmp = arr.[i]
+    arr.[i] <- arr.[j]
+    arr.[j] <- tmp
+    
+  let knuthShuffle (s: seq<'a>) =
+    let arr = Seq.toArray s
+    let size = arr |> Array.length
+    for i in (size-1)..(-1)..1 do
+      let rnd = DiscreteUniform.Sample(0, i-1)
+      swap rnd i arr
+    arr |> Array.toSeq
+    

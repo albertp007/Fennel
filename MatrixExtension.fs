@@ -34,3 +34,8 @@ module Matrix =
 
   let inline sigmoid (x: Matrix<float>) = 1.0 / ( 1.0 + exp(-x) )
 
+  let inline ofSeq r c s = s |> Seq.toArray |> DenseMatrix.raw r c
+
+  let inline reshape r c (m: Matrix<'a>) = m.ToRowMajorArray() |> ofSeq r c
+    
+
