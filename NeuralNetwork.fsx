@@ -8,6 +8,7 @@
 #r @"DotNumerics.dll"
 
 open MathNet.Numerics.LinearAlgebra
+open MathNet.Numerics.LinearAlgebra.Storage
 open MathNet.Numerics.Data.Text
 open MathNet.Numerics.Statistics
 open MathNet.Numerics.Data.Matlab
@@ -27,3 +28,5 @@ let X0 : Matrix<float> = data.["X"]
 let y0 : Matrix<float> = data.["y"]
 let Theta1 : Matrix<float> = weights.["Theta1"]
 let Theta2 : Matrix<float> = weights.["Theta2"]
+
+let layers = [400; 25; 10]; 
