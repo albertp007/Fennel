@@ -268,29 +268,4 @@ module ML =
           | _ -> failwith "Invalid case")
     |> List.rev
 
-  let unroll (ms: seq<Matrix<float>>) =
-    let index = 
-      ms 
-      |> Seq.scan (fun total m->total + m.RowCount * m.ColumnCount) 0
-      |> Seq.toArray
-    let size = index |> Array.last
-    let dst = Array.create size 0.0
-    ms |> Seq.iteri (
-            fun i m -> 
-              let src = 
-                match m with
-                | :? Double.DenseMatrix as dm -> dm.Values
-                | _ -> m.ToColumnMajorArray()
-              Array.blit src 0 dst index.[i] src.Length)
-    dst
 
-  let reshape (src: 'a[]) mConfig =
-    let index = mConfig |> Seq.scan (fun t (r, c) -> t + r * c) 0 |> Seq.toArray
-    mConfig
-    |> Seq.mapi (
-        fun i (r, c) ->
-          let sz = r * c
-          let dst = Array.create sz Matrix<'a>.Zero
-          Array.blit src index.[i] dst 0 sz
-          dst |> DenseMatrix.raw r c
-        )
