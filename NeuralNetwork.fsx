@@ -25,8 +25,17 @@ let thetaPath = "/Users/panga/Dropbox/Machine Learning/machine-learning-ex4/ex4/
 let data = MatlabReader.ReadAll<double>(path)
 let weights = MatlabReader.ReadAll<double>(thetaPath)
 let X0 : Matrix<float> = data.["X"]
+let X : Matrix<float> = X0 |> Matrix.prependColumnOnes
 let y0 : Matrix<float> = data.["y"]
 let Theta1 : Matrix<float> = weights.["Theta1"]
 let Theta2 : Matrix<float> = weights.["Theta2"]
 
-let layers = [400; 25; 10]; 
+let layers = [400; 25; 10]
+let dims = layers |> makeThetaDim
+let randomMatrix (r, c) = DenseMatrix.randomStandard<float> r c
+let nLabels = 10.0
+let y =
+  let m = CreateMatrix.Dense(y0.RowCount, int nLabels)
+  y0
+  |> Matrix.iteri (fun r c v -> m.[r, (int v)-1] <- 1.0)
+  m

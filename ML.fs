@@ -257,6 +257,13 @@ module ML =
       swap rnd i arr
     arr |> Array.toSeq
     
+  /// <summary>
+  /// Generate the dimensions of the theta matrices given a list of integers
+  /// representing the number of nodes in each layer, not counting in the bias
+  /// node.  Element 0 should be the number of input features and the last
+  /// element should be the number of output nodes
+  /// </summary>
+  /// <param name="layers"></param>
   let makeThetaDim layers =
     layers
     |> List.rev
@@ -267,5 +274,175 @@ module ML =
           | [a; b] -> (a, b+1)
           | _ -> failwith "Invalid case")
     |> List.rev
+
+  /// <summary>
+  /// Forward propagates from the layer of nodes where the given activations are
+  /// </summary>
+  /// <param name="activations">Activation matrix in this layer. Each row
+  /// represents one training example and each value in the row is the value
+  /// of each nodes in that layer</param>
+  /// <param name="theta">Theta matrix.  The number of rows is equal to the
+  /// number of nodes in the next layer and the number of columns is the number
+  /// of nodes in the current layer + 1 which is the bias node</param>
+  let forwardPropagate activations (theta: Matrix<'a>) =
+    activations 
+    |> Matrix.prependColumnOnes 
+    |> fun m -> m * theta.Transpose() 
+    |> Matrix.sigmoid
+
+  /// <summary>
+  /// Back-propagation algorithm to calculate the deltas from the delta in the
+  /// l+1 layer, the theta and the activation matrices of the l-layer
+  /// </summary>
+  /// <param name="delta">Delta in the l+1 layer</param>
+  /// <param name="theta">Theta in the current layer</param>
+  /// <param name="activation">Activations in the current layer</param>
+  let backPropagate (delta: Matrix<float>) (theta, activation) =
+    let activation1 = activation |> Matrix.prependColumnOnes
+    let delta' = (delta * theta) .* activation1 .* (1.0 - activation1)
+    delta'.[0.., 1..]
+
+  /// <summary>
+  /// Cost function for neural network
+  /// </summary>
+  /// <param name="x">The feature matrix, where the number of rows is the
+  /// the number of examples and the number of columns is the number of features
+  /// in each example</param>
+  /// <param name="y">The output matrix, where the number of rows is the number
+  /// of examples and the number of columns is the number of nodes in the final
+  /// layer</param>
+  /// <param name="layers">Sequence of integers specifying the number of nodes
+  /// in each layer.  Element 0 is thus the number of input features and the
+  /// last element is the number of nodes in the output layer</param>
+  /// <param name="lambda">Regularization parameter</param>
+  /// <param name="thetaArray">The theta matrices of all layers unrolled into
+  /// a single array, column-major-wise</param>
+  let nnCost x y layers lambda thetaArray =
+    let dims = layers |> makeThetaDim
+    // Could have used x below but using y instead so that its type can be
+    // automatically inferred
+    let m = y |> Matrix.rowCount
+    let thetas = thetaArray |> Matrix.reshape dims
+    let h = thetas |> Seq.fold forwardPropagate x
+    let reg = 
+      thetas
+      // Exclude bias nodes in regularization, hence the slice
+      |> Seq.fold (fun s m -> s + (m.[0.., 1..] .^ 2.0 |> Matrix.sum)) 0.0
+      |> (*) (lambda / 2.0 / float m)
+    ((-y .* log h) - (1.0-y) .* log (1.0 - h) |> Matrix.sum) / (float m) + reg
+
+  /// <summary>
+  /// Gradient function for neural network using the back propagation algorithm
+  /// </summary>
+  /// <param name="x">The feature matrix of all training examples</param>
+  /// <param name="y">The result of all training examples</param>
+  /// <param name="layers">List of integers representing the number of nodes
+  /// excluding the bias node in each layer of the network</param>
+  /// <param name="lambda">Regularization parameter</param>
+  /// <param name="thetaArray">Theta matrices of all layers unrolled into an
+  /// array, column-major-wise.  See Matrix.unroll and Matrix.reshape</param>
+  let nnGrad x y layers lambda thetaArray =    
+    let dims = layers |> makeThetaDim
+    // Could have used x below but using y instead so that its type can be
+    // automatically inferred
+    let m = y |> Matrix.rowCount
+    let thetas = thetaArray |> Matrix.reshape dims
+    let activations = thetas |> Seq.scan forwardPropagate x
+    let output = activations |> Seq.last
+    let deltaLast = output - y
+    let deltas = 
+      activations
+      |> Seq.take (Seq.length activations - 1)
+      |> Seq.tail // we don't need the first activation which is simply the input
+      |> Seq.rev
+      |> Seq.zip (thetas |> Seq.rev)
+      |> Seq.scan backPropagate deltaLast
+      |> Seq.rev
+    let thetaRegs =
+      thetas
+      |> Seq.map (
+        fun theta -> 
+          theta.[0.., 1..] 
+          |> Matrix.prependCol (DenseVector.zero<float> theta.RowCount )
+          |> (*) (lambda/(float m )))
+    deltas
+    |> Seq.zip activations  // last element of activations will be ignored
+    |> Seq.map (fun (activation, delta) -> 
+         delta.Transpose() * (activation |> Matrix.prependColumnOnes) / float m)
+    |> Seq.map2 (+) thetaRegs
+    |> Matrix.unroll
+
+  /// <summary>
+  /// Calculates the gradient of a multi-dimensional function by perturbation
+    /// </summary>
+  /// <param name="f">the function which takes an array of floats and returns
+  /// a float</param>
+  /// <param name="thetas"></param>
+  let computeNumericalGradient (f: (float[]->float)) (thetas: float[]) =
+    let e = 1e-4;
+    let perturb = Array.create (thetas.Length) 0.0
+    let result = Array.create (thetas.Length) 0.0
+    for i in 0..(thetas.Length-1) do
+      if i > 0 then perturb.[i-1] <- 0.0
+      perturb.[i] <- e
+      let thetasV = thetas |> vector
+      let perturbV = perturb |> vector
+      let plus = (thetasV + perturbV) |> Vector.toArray
+      let minus = (thetasV - perturbV) |> Vector.toArray
+      result.[i] <- (f plus - f minus) / 2.0 / e
+    result
+
+module UnitTests =
+
+  open NUnit.Framework
+  open FsUnit
+  open MathNet.Numerics.LinearAlgebra
+  open ML
+
+  [<TestCase("3, 5, 3", 5, 0.0)>]
+  [<TestCase("30, 45, 10", 5, 0.0)>]
+  [<TestCase("3, 10, 5, 3", 5, 0.0)>]
+  [<TestCase("3, 25, 10, 5, 3", 5, 0.0)>]
+  let ``NN Gradient`` (layerString: string, m, lambda) =
+
+    let layers = 
+      layerString.Split([|','|]) 
+      |> Array.map (System.Int32.Parse) 
+      |> Array.toList
+    let nFeatures = layers.[0]
+    let nLabels = layers |> List.last
+
+    let initTheta (r, c) =
+      [1.0..(float)(r*c)] 
+      |> vector 
+      |> sin 
+      |> Matrix.reshapeVector [(r, c)]
+      |> Seq.head
+
+    let dims = layers |> makeThetaDim
+    let thetas = dims |> Seq.map initTheta
+    let x = initTheta (m, nFeatures)
+    let y =
+      let a = CreateMatrix.Dense(m, nLabels)
+      [|1.0..(float m)|]
+      |> Matrix.reshape [(m, 1)]
+      |> Seq.head
+      |> fun u -> u % (float nLabels) + 1.0
+      |> Matrix.iteri (fun r c v -> a.[r, (int v)-1] <- 1.0)
+      a
+
+    let costFunc = nnCost x y layers lambda
+    let numGrad = 
+      thetas |> Matrix.unroll |> computeNumericalGradient costFunc |> vector
+    let grad = thetas |> Matrix.unroll |> nnGrad x y layers lambda |> vector
+    (numGrad - grad)
+    |> Vector.sum
+    |> should be (lessThan 1e-04)
+
+
+
+
+      
+
 
 

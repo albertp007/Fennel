@@ -27,7 +27,12 @@ module Matrix =
   let inline applyColVector op v m =
     v |> replicateCols (Matrix.columnCount m) |> op m
 
-  let inline prependOnes (x: Matrix<float>) =
+  let inline prependRowOnes (x: Matrix<float>) =
+    DenseVector.create (x.ColumnCount) 1.0
+    |> Matrix.prependRow
+    <| x  
+
+  let inline prependColumnOnes (x: Matrix<float>) =
     DenseVector.create (x.RowCount) 1.0
     |> Matrix.prependCol
     <| x  
@@ -69,7 +74,7 @@ module Matrix =
   /// <param name="dimSeq">Sequence of dimensions, each dimension is a pair
   /// of integers specifying the number of rows and columns of each matrix
   /// </param>
-  let reshapeVector (v: Vector<'a>) dimSeq =
+  let reshapeVector dimSeq (v: Vector<'a>) =
     v |> Vector.toArray |> reshape dimSeq
 
   /// <summary>
