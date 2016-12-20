@@ -244,11 +244,21 @@ module ML =
      optimizer.ComputeMin( f', g', initial |> Vector.toArray )
      |> vector
 
+  /// <summary>
+  /// Swap element with index i and j in an array in place
+  /// </summary>
+  /// <param name="i"></param>
+  /// <param name="j"></param>
+  /// <param name="arr"></param>
   let swap i j (arr: 'a[]) =
     let tmp = arr.[i]
     arr.[i] <- arr.[j]
     arr.[j] <- tmp
     
+  /// <summary>
+  /// Generates a random permutation of a given sequence of elements
+  /// </summary>
+  /// <param name="s"></param>
   let knuthShuffle (s: seq<'a>) =
     let arr = Seq.toArray s
     let size = arr |> Array.length
@@ -366,15 +376,15 @@ module ML =
           |> Matrix.prependCol (DenseVector.zero<float> theta.RowCount )
           |> (*) (lambda/(float m )))
     deltas
-    |> Seq.zip activations  // last element of activations will be ignored
-    |> Seq.map (fun (activation, delta) -> 
+    |> Seq.map2 (fun activation delta -> 
          delta.Transpose() * (activation |> Matrix.prependColumnOnes) / float m)
+         activations
     |> Seq.map2 (+) thetaRegs
     |> Matrix.unroll
 
   /// <summary>
   /// Calculates the gradient of a multi-dimensional function by perturbation
-    /// </summary>
+  /// </summary>
   /// <param name="f">the function which takes an array of floats and returns
   /// a float</param>
   /// <param name="thetas"></param>
@@ -391,6 +401,28 @@ module ML =
       let minus = (thetasV - perturbV) |> Vector.toArray
       result.[i] <- (f plus - f minus) / 2.0 / e
     result
+
+  /// <summary>
+  /// Randomly initializes a matrix of a particular dimension with a continuous
+  /// uniform distribution with specified lower and upper bound
+  /// </summary>
+  /// <param name="l">Lower bound of the continuous uniform distribution</param>
+  /// <param name="u">Upper bound of the continuous uniform distribution</param>
+  /// <param name="r">Number of rows</param>
+  /// <param name="c">Number of columns</param>
+  let randomInit l u r c =
+    let dist = ContinuousUniform(l, u)
+    CreateMatrix.Random<float>( r, c, dist )
+
+  /// <summary>
+  /// Randomly initializes a matrix of a particular dimension with a continuous
+  /// uniform distribution which is symmetric around 0 and between [-e, e]
+  /// </summary>
+  /// <param name="e">The random numbers generated will be in [-e, e]</param>
+  /// <param name="r">Number of rows</param>
+  /// <param name="c">Number of columns</param>
+  let randomInitSymmetric e r c =
+    randomInit (- (abs e)) (abs e) r c
 
 module UnitTests =
 
