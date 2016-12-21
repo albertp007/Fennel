@@ -228,21 +228,37 @@ module ML =
     vector >> f >> Vector.toArray
 
   /// <summary>
-  /// Calls the BFGS optimizer in DotNet Numerics with vectors in Mathnet 
+  /// Calls the BFGS optimizer in DotNet Numerics with arrays in Mathnet 
   /// Numerics.  The BFGS optimizer takes double arrays in its arguments. This
   /// function is a helper function which converts the input from the vector
   /// form to double arrays and converts the output of the optimizer from
   /// double array back to vector.
   /// </summary>
+  /// <param name="tolerance">Tolerance param of the L_BFGS_B optimizer</param>
   /// <param name="f">the function to minimize</param>
   /// <param name="g">the gradient of the function</param>
   /// <param name="initial">initial guess</param>
-  let bfgs (f:Vector<float>->float) (g: Vector<float>->Vector<float>) initial =
+  let bfgs tolerance 
+    ((f:float[]->float), (g: float[]->float[]), (initial: float[])) =
+
+     let optimizer = L_BFGS_B()
+     optimizer.Tolerance <- tolerance
+     optimizer.ComputeMin( f, g, initial )
+
+  /// <summary>
+  /// This is similar to bfgs except that it takes functions which have
+  /// arguments in a Mathnet Numerics vector rather than an array
+  /// </summary>
+  /// <param name="tolerance"></param>
+  /// <param name="f"></param>
+  /// <param name="g"></param>
+  /// <param name="init"></param>
+  let bfgsVec tolerance (f:Vector<float>->float) 
+    (g: Vector<float>->Vector<float>) init =
+
      let f' = f |> toArrayFunc
      let g' = g |> toArrayGradFunc
-     let optimizer = L_BFGS_B()
-     optimizer.ComputeMin( f', g', initial |> Vector.toArray )
-     |> vector
+     bfgs tolerance (f', g', init |> Vector.toArray ) |> vector
 
   /// <summary>
   /// Swap element with index i and j in an array in place
@@ -268,6 +284,30 @@ module ML =
     arr |> Array.toSeq
     
   /// <summary>
+  /// Calculates the number of nodes in each layers given the number of nodes
+  /// in each hidden layers, the input and the output.  The number of nodes in 
+  /// the first layer is calculated based on the number of features in the input
+  /// which is assumed to be a matrix of m rows times n columns where m is the
+  /// number of training examples and n is the number of features.  The number 
+  /// of nodes in the last layer is simply the number of output nodes and is
+  /// calculated based on the matrix y, where the number of rows in y is the
+  /// number of training examples and the number of columns is the number of
+  /// output nodes.  The number of nodes in each hidden layers, excluding the
+  /// bias node, is given in a sequence of integers</summary>
+  /// <param name="x">The input matrix where the number of rows is the number
+  /// of training examples and the number of columns is the number of features
+  /// </param>
+  /// <param name="y">The output matrix where the number of rows is the number
+  /// of training examples and the number of columns is the number of output
+  /// nodes</param>
+  /// <param name="hiddenLayerSeq">A sequence containing the number of nodes
+  /// in each hidden layers.  The length of this sequence is exactly the number
+  /// of hidden layers</param>
+  let makeLayerSeq x y hiddenLayerSeq =
+    [[x |> Matrix.columnCount]; hiddenLayerSeq; [y |> Matrix.columnCount]] 
+    |> Seq.concat
+
+  /// <summary>
   /// Generate the dimensions of the theta matrices given a list of integers
   /// representing the number of nodes in each layer, not counting in the bias
   /// node.  Element 0 should be the number of input features and the last
@@ -276,6 +316,7 @@ module ML =
   /// <param name="layers"></param>
   let makeThetaDim layers =
     layers
+    |> Seq.toList
     |> List.rev
     |> List.windowed 2
     |> List.map (
@@ -321,14 +362,16 @@ module ML =
   /// <param name="y">The output matrix, where the number of rows is the number
   /// of examples and the number of columns is the number of nodes in the final
   /// layer</param>
-  /// <param name="layers">Sequence of integers specifying the number of nodes
-  /// in each layer.  Element 0 is thus the number of input features and the
-  /// last element is the number of nodes in the output layer</param>
+  /// <param name="hiddenLayers">Sequence of integers specifying the number of
+  /// nodes in each hidden layer, not including the input layer and the output
+  /// layer as these can be derived using the input and output matrixand also
+  /// excluding the bias node in each hidden layer of the network</param>
   /// <param name="lambda">Regularization parameter</param>
   /// <param name="thetaArray">The theta matrices of all layers unrolled into
   /// a single array, column-major-wise</param>
-  let nnCost x y layers lambda thetaArray =
-    let dims = layers |> makeThetaDim
+  let nnCost x y hiddenLayers lambda thetaArray =
+    let dims = hiddenLayers |> makeLayerSeq x y |> makeThetaDim
+               
     // Could have used x below but using y instead so that its type can be
     // automatically inferred
     let m = y |> Matrix.rowCount
@@ -346,13 +389,15 @@ module ML =
   /// </summary>
   /// <param name="x">The feature matrix of all training examples</param>
   /// <param name="y">The result of all training examples</param>
-  /// <param name="layers">List of integers representing the number of nodes
-  /// excluding the bias node in each layer of the network</param>
+  /// <param name="hiddenLayers">Sequence of integers representing the number of
+  /// nodes in each hidden layer, not including the input layer and the output
+  /// layer as these can be derived using the input and output matrix and also
+  /// excluding the bias node in each hidden layer of the network</param>
   /// <param name="lambda">Regularization parameter</param>
   /// <param name="thetaArray">Theta matrices of all layers unrolled into an
   /// array, column-major-wise.  See Matrix.unroll and Matrix.reshape</param>
-  let nnGrad x y layers lambda thetaArray =    
-    let dims = layers |> makeThetaDim
+  let nnGrad x y hiddenLayers lambda thetaArray =    
+    let dims = hiddenLayers |> makeLayerSeq x y |> makeThetaDim
     // Could have used x below but using y instead so that its type can be
     // automatically inferred
     let m = y |> Matrix.rowCount
@@ -381,6 +426,35 @@ module ML =
          activations
     |> Seq.map2 (+) thetaRegs
     |> Matrix.unroll
+
+  /// <summary>
+  /// Given the input and output matrix x and y which are the training examples
+  /// and their actual values respectively, create a triplet containing the
+  /// cost function, the gradient function and a randomly initialized array
+  /// The triplet can be piped into the bfgs function directoy for optimization
+  /// </summary>
+  /// <param name="x">The feature matrix of all training examples</param>
+  /// <param name="y">The result of all training examples</param>
+  /// <param name="hiddenLayers">Sequence of integers representing the number of
+  /// nodes in each hidden layer, not including the input layer and the output
+  /// layer as these can be derived using the input and output matrix and also
+  /// excluding the bias node in each hidden layer of the network</param>
+  /// <param name="lambda">Regularization parameter</param>
+  /// <param name="epsilon">The random numbers generated are in the closed
+  /// interval [-epsilon, epsilon]</param>
+  let makeNN x y hiddenLayers lambda epsilon =
+    let dist = ContinuousUniform(-abs epsilon, abs epsilon)
+    (
+      nnCost x y hiddenLayers lambda,
+      nnGrad x y hiddenLayers lambda,
+      hiddenLayers
+      |> makeLayerSeq x y
+      |> makeThetaDim
+      |> Seq.map (fun (r, c) -> r*c)
+      |> Seq.sum
+      |> (fun n -> CreateVector.Random<float>(n, dist))
+      |> Vector.toArray
+    )
 
   /// <summary>
   /// Calculates the gradient of a multi-dimensional function by perturbation
@@ -431,18 +505,16 @@ module UnitTests =
   open MathNet.Numerics.LinearAlgebra
   open ML
 
-  [<TestCase("3, 5, 3", 5, 0.0)>]
-  [<TestCase("30, 45, 10", 5, 0.0)>]
-  [<TestCase("3, 10, 5, 3", 5, 0.0)>]
-  [<TestCase("3, 25, 10, 5, 3", 5, 0.0)>]
-  let ``NN Gradient`` (layerString: string, m, lambda) =
+  [<TestCase("5", 3, 3, 5, 0.0)>]
+  [<TestCase("45", 30, 10, 5, 0.0)>]
+  [<TestCase("10, 5", 3, 3, 5, 0.0)>]
+  [<TestCase("25, 10, 5", 3, 3, 5, 0.0)>]
+  let ``NN Gradient`` (layerString: string, nFeatures, nLabels, m, lambda) =
 
-    let layers = 
+    let hiddenLayers = 
       layerString.Split([|','|]) 
       |> Array.map (System.Int32.Parse) 
       |> Array.toList
-    let nFeatures = layers.[0]
-    let nLabels = layers |> List.last
 
     let initTheta (r, c) =
       [1.0..(float)(r*c)] 
@@ -451,8 +523,6 @@ module UnitTests =
       |> Matrix.reshapeVector [(r, c)]
       |> Seq.head
 
-    let dims = layers |> makeThetaDim
-    let thetas = dims |> Seq.map initTheta
     let x = initTheta (m, nFeatures)
     let y =
       let a = CreateMatrix.Dense(m, nLabels)
@@ -462,11 +532,13 @@ module UnitTests =
       |> fun u -> u % (float nLabels) + 1.0
       |> Matrix.iteri (fun r c v -> a.[r, (int v)-1] <- 1.0)
       a
+    let dims = hiddenLayers |> makeLayerSeq x y |> makeThetaDim
+    let thetas = dims |> Seq.map initTheta
 
-    let costFunc = nnCost x y layers lambda
+    let (costFunc, gradFunc, _) = makeNN x y hiddenLayers lambda 0.001
     let numGrad = 
       thetas |> Matrix.unroll |> computeNumericalGradient costFunc |> vector
-    let grad = thetas |> Matrix.unroll |> nnGrad x y layers lambda |> vector
+    let grad = thetas |> Matrix.unroll |> gradFunc |> vector
     (numGrad - grad)
     |> Vector.sum
     |> should be (lessThan 1e-04)

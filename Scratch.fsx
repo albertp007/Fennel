@@ -85,3 +85,23 @@ let refreshCache positions =
   positions
   |> getNames
   |> List.map (hist "cache")
+
+let hsi = hist "cache" "^HSI"
+
+hsi?Close - hsi?Open
+
+hsi?Close - hsi?Open
+|> Series.map (fun _ v -> if v > 0.0 then 1.0 else 0.0);;
+|> Series.shift (-1)
+
+hsi?Close - (hsi?Close |> Series.shift 1)
+|> Series.window 2
+|> Series.values
+|> Seq.map (Series.values)
+|> Seq.tail
+|> matrix
+
+hsi?Close |> rsi 14
+hsi?Volume
+
+
