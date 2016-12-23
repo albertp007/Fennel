@@ -90,9 +90,13 @@ let hsi = hist "cache" "^HSI"
 
 hsi?Close - hsi?Open
 
-hsi?Close - hsi?Open
-|> Series.map (fun _ v -> if v > 0.0 then 1.0 else 0.0);;
-|> Series.shift (-1)
+let y =
+  hsi?Close - hsi?Open
+  |> Series.map (fun _ v -> if v > 0.0 then 1.0 else 0.0)
+  |> Series.shift (-1)
+
+let logClose = hsi?Close |> log
+let logReturn = logClose - (logClose |> Series.shift 1)
 
 hsi?Close - (hsi?Close |> Series.shift 1)
 |> Series.window 2
@@ -101,7 +105,19 @@ hsi?Close - (hsi?Close |> Series.shift 1)
 |> Seq.tail
 |> matrix
 
-hsi?Close |> rsi 14
-hsi?Volume
+let gap = ("Gap", hsi?Close - hsi?Open)
+let rsiSeries = ("RSI_14", hsi?Close |> rsi 14)
+let volumeSeries = ("Volume", hsi?Volume)
+let makeReturn n =
+  (sprintf "Return%0d" n, logReturn |> Series.shift n)
 
-
+let f =
+  [rsiSeries
+   volumeSeries
+   gap
+   makeReturn 0
+   makeReturn 1
+   makeReturn 2
+  ]
+  |> Frame.ofColumns
+  |> Frame.dropSparseRows
