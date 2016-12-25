@@ -140,26 +140,41 @@ module YahooFinance =
   /// </summary>
   /// <param name="cacheDir"></param>
   /// <param name="stockCode"></param>
-  let hist cacheDir stockCode =
+  let histOnline cacheDir stockCode =
     let (cached, cachePath) = histCache cacheDir stockCode
-    if Frame.countRows cached > 0 then
-      let latestDate = (cached.RowKeys |> Seq.max) + TimeSpan(1, 0, 0, 0)
-      let latest =
-        try downloadHistFromDate (Some latestDate) stockCode |> csvToFrame
-        with
-          | _ -> Frame.ofRows([])
-      if not latest.IsEmpty then
-        let combined = Frame.merge cached latest
-        combined.SaveCsv(cachePath, true, ["Date"])
-        combined
+    (
+      if Frame.countRows cached > 0 then
+        let latestDate = (cached.RowKeys |> Seq.max) + TimeSpan(1, 0, 0, 0)
+        let latest =
+          try downloadHistFromDate (Some latestDate) stockCode |> csvToFrame
+          with
+            | _ -> Frame.ofRows([])
+        if not latest.IsEmpty then
+          let combined = Frame.merge cached latest
+          combined.SaveCsv(cachePath, true, ["Date"])
+          combined
+        else
+          cached
       else
-        cached
-    else
-      let prices = downloadHist stockCode
-      if not (System.IO.Directory.Exists cacheDir) then
-        System.IO.Directory.CreateDirectory cacheDir |> ignore
-      prices.Save cachePath
-      prices |> csvToFrame
+        let prices = downloadHist stockCode
+        if not (System.IO.Directory.Exists cacheDir) then
+          System.IO.Directory.CreateDirectory cacheDir |> ignore
+        prices.Save cachePath
+        prices |> csvToFrame
+     ), cachePath
+
+  /// <summary>
+  /// Retrieves historical prices given a history function, e.g. histOnline
+  /// which retrieves prices based on both cache and yahoo finance online which
+  /// assumes there is an internet connection or histCache which only retrieves 
+  /// what is currently in the cache only and does not hit the internet or there
+  /// might be other variations in the future
+  /// </summary>
+  /// <param name="histFunc"></param>
+  /// <param name="cacheDir"></param>
+  /// <param name="stockCode"></param>
+  let hist histFunc (cacheDir: string) (stockCode: string) =
+    histFunc cacheDir stockCode |> fst
 
   /// <summary>
   /// Retrieves the current or last trading date quote from yahoo finance. The
