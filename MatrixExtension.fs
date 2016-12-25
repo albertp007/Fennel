@@ -41,6 +41,9 @@ module Matrix =
 
   let inline ofSeq r c s = s |> Seq.toArray |> DenseMatrix.raw r c
 
+  let inline map2 f (m1: #Matrix<'a>) (m2: #Matrix<'a>) = 
+    m1.Map2((fun x y -> f x y), m2)
+
   /// <summary>
   /// Reshape an array of numbers into a sequence of Matrix, given the dimension
   /// of each of the matrix in the sequence.  Each element in the source array
