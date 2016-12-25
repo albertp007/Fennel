@@ -3,6 +3,7 @@
 open MathNet.Numerics.LinearAlgebra
 open MathNet.Numerics.Statistics
 open MathNet.Numerics.Distributions
+open MathNet.Numerics
 open DotNumerics.Optimization
 
 module ML =
@@ -26,15 +27,34 @@ module ML =
   let inline boolToInt b = if b then 1 else 0
 
   /// <summary>
-  /// Function to normalize the set of features in the training set
+  /// Normalize the given matrix X, where the number of rows is the number of
+  /// examples and the number of columns is the number of features, given
+  /// vectors of mu and sigma, representing the mean and standard deviation of
+  /// each feature
+  /// </summary>
+  /// <param name="mu">Vector representing the mean of each feature</param>
+  /// <param name="sigma">Vector representing the standard deviation of each
+  /// factor</param>
+  /// <param name="x">Matrix representing the training examples where the number
+  /// of rows is the number of examples and the number of columns is the number
+  /// of features</param>
+  let normalize (mu: Vector<float>) (sigma: Vector<float>) (x: Matrix<float>) =
+    let (-) m v = Matrix.applyRowVector (-) v m
+    let (./) m v = Matrix.applyRowVector (Matrix.map2 (fun v1 v2 -> if v2 = 0.0 then v1 else v1/v2)) v m
+    (x - mu) ./ sigma
+
+  /// <summary>
+  /// Calculates the mean and standard deviation of each feature in the training
+  /// example matrix where the number of rows is the number of examples and the
+  /// number of columns is the number of features, and then normalize the
+  /// matrix, returning a triplet of mean and standard deviation of each feature
+  /// as vectors and the normalized example matrix
   /// </summary>
   /// <param name="x"></param>
   let featureNormalize (x: Matrix<float>) =
-    let (-) m v = Matrix.applyRowVector (-) v m
-    let (./) m v = Matrix.applyRowVector (./) v m
     let mu = x |> Matrix.aggCols Statistics.Mean
     let sigma = x |> Matrix.aggCols Statistics.StandardDeviation
-    mu, sigma, (x - mu) ./ sigma
+    mu, sigma, normalize mu sigma x
 
   /// <summary>
   /// Function to evaluate the value of a linear regression hypothesis function
@@ -63,7 +83,7 @@ module ML =
   /// <param name="x"></param>
   /// <param name="y"></param>
   /// <param name="th"></param>
-  let lnrGrad (lambda: float) (x: Matrix<float>) (y: Vector<float>) 
+  let linearGrad (lambda: float) (x: Matrix<float>) (y: Vector<float>) 
       (th: Vector<float>) =
     let m = float x.RowCount
     let h = x * th
@@ -86,7 +106,7 @@ module ML =
   /// <param name="h"></param>
   /// <param name="y"></param>
   /// <param name="theta"></param>
-  let private lgrCost0 (lambda: float) (h: Vector<float>) (y: Vector<float>) 
+  let private logisticCost0 (lambda: float) (h: Vector<float>) (y:Vector<float>) 
       (theta: Vector<float>) =
     // h is assumed to be sigmoid(x*theta), which is a vector
     let m = float h.Count
@@ -108,7 +128,7 @@ module ML =
   /// <param name="y"></param>
   /// <param name="theta"></param>
   /// <param name="h"></param>
-  let private lgrGrad0 (lambda: float) (x: Matrix<float>) (y: Vector<float>) 
+  let private logisticGrad0 (lambda: float) (x: Matrix<float>) (y:Vector<float>) 
       (theta: Vector<float>) (h: Vector<float>) =
     // h is assumed to be sigmoid(x*theta), which is a vector
     let m = float x.RowCount
@@ -128,16 +148,16 @@ module ML =
   /// matrix X is assumed to be the coefficients for theta0 and should be all
   /// ones.
   ///
-  /// The actual implementation is in the helper function lgrCost0.
+  /// The actual implementation is in the helper function logisticCost0.
   /// </summary>
   /// <param name="lambda"></param>
   /// <param name="x"></param>
   /// <param name="y"></param>
   /// <param name="theta"></param>
-  let lgrCost (lambda: float) (x: Matrix<float>) (y: Vector<float>) 
+  let logisticCost (lambda: float) (x: Matrix<float>) (y: Vector<float>) 
       (theta: Vector<float>) =
     let h = Vector.sigmoid(x*theta)
-    lgrCost0 lambda h y theta
+    logisticCost0 lambda h y theta
 
   /// <summary>
   /// Function that evaluates the partial derivates of the regulated cost 
@@ -153,46 +173,30 @@ module ML =
   /// matrix X is assumed to be the coefficients for theta0 and should be all
   /// ones.
   ///
-  /// The actual implementation is in the helper function lgrGrad0.
+  /// The actual implementation is in the helper function logisticGrad0.
   /// </summary>
   /// <param name="lambda"></param>
   /// <param name="x"></param>
   /// <param name="y"></param>
   /// <param name="theta"></param>
-  let lgrGrad (lambda: float) (x: Matrix<float>) (y: Vector<float>) 
+  let logisticGrad (lambda: float) (x: Matrix<float>) (y: Vector<float>) 
       (theta: Vector<float>) =  
     let h = Vector.sigmoid(x*theta)
-    lgrGrad0 lambda x y theta h
+    logisticGrad0 lambda x y theta h
 
   /// <summary>
   /// Function to evaluate the value and the partial derivatives of the 
   /// regulated cost function for logistic regression.  It simply calls
-  /// lgrCost and lgrGrad and returns a pair
+  /// logisticCost and logisticGrad and returns a pair
   /// </summary>
   /// <param name="lambda"></param>
   /// <param name="x"></param>
   /// <param name="y"></param>
   /// <param name="th"></param>
-  let lgrGradCost (lambda: float) (x: Matrix<float>) (y: Vector<float>) 
+  let logisticGradCost (lambda: float) (x: Matrix<float>) (y: Vector<float>) 
       (th: Vector<float>) = 
     let h = Vector.sigmoid (x*th)
-    lgrGrad0 lambda x y th h, lgrCost0 lambda h y th
-
-  /// <summary>
-  /// Apply a function on a monoid N number of times
-  /// </summary>
-  /// <param name="f"></param>
-  /// <param name="n"></param>
-  /// <param name="init"></param>
-  let apply f n init =
-    [1..n] |> List.fold (fun s i -> f s) init
-
-  /// <summary>
-  /// Apply a function on a monoid N number of times, collecting intermediate
-  /// results in a list
-  /// </summary>
-  let applyScan f n init =
-    [1..n] |> List.scan (fun s i -> f s) init
+    logisticGrad0 lambda x y th h, logisticCost0 lambda h y th
 
   /// <summary>
   /// Gradient descent search algorithm given the number of iterations, the
@@ -281,8 +285,52 @@ module ML =
     for i in (size-1)..(-1)..1 do
       let rnd = DiscreteUniform.Sample(0, i-1)
       swap rnd i arr
-    arr |> Array.toSeq
-    
+    arr
+
+  /// <summary>
+  /// Randomly permute the rows of a matrix
+  /// </summary>
+  /// <param name="m"></param>
+  let randomPermuteMatrixRows (m: Matrix<'a>) =
+    let clone = m.Clone();
+    let p = Permutation(knuthShuffle [0..(m.RowCount-1)])
+    clone.PermuteRows(p)
+    clone
+
+  /// <summary>
+  /// Splits the data set matrix sequentially into a training set, a test data
+  /// set and optionally a cross validation data set according to the 
+  /// percentages of training and test examples.  The percentages must NOT add
+  /// up to be larger than 1.0 otherwise an exception will be thrown.  The
+  /// cross validation set is whatever is left over of the training and test
+  /// data sets and therefore is returned as a matrix option
+  /// </summary>
+  /// <param name="trainingPerc"></param>
+  /// <param name="testPerc"></param>
+  /// <param name="data"></param>
+  let splitDataSet trainingPerc testPerc (data: Matrix<'a>) =
+    let trainingPerc', testPerc' = abs trainingPerc, abs testPerc
+    if trainingPerc' + testPerc' > 1.0 then 
+      failwith "Percentages add up to be larger than 1.0"
+    let cvPerc' = 1.0 - trainingPerc' - testPerc'
+    let m = data.RowCount
+    let numTraining = (float m) * trainingPerc' |> round |> int
+    let numTest = (float m) * testPerc' |> round |> int
+    let numCV = m - numTraining - numTest
+    (data.[0..(numTraining-1), 0..],
+     (if numTest > 0 then Some data.[numTraining..(numTraining+numTest-1), 0..]
+      else None),
+     (if numCV > 0 then Some data.[numTraining+numTest.., 0..] else None))
+
+  /// <summary>
+  /// Splits a data set matrix into the feature matrix and the actual output
+  /// using the last column as the actual output
+  /// </summary>
+  /// <param name="data"></param>
+  let useLastColAsY (data: Matrix<'a>) =
+    (data.[0.., 0..(data.ColumnCount-2)],
+     data.[0.., (data.ColumnCount-1)])
+   
   /// <summary>
   /// Calculates the number of nodes in each layers given the number of nodes
   /// in each hidden layers, the input and the output.  The number of nodes in 
@@ -335,7 +383,7 @@ module ML =
   /// <param name="theta">Theta matrix.  The number of rows is equal to the
   /// number of nodes in the next layer and the number of columns is the number
   /// of nodes in the current layer + 1 which is the bias node</param>
-  let forwardPropagate activations (theta: Matrix<'a>) =
+  let forwardPropagate activations (theta: Matrix<float>) =
     activations 
     |> Matrix.prependColumnOnes 
     |> fun m -> m * theta.Transpose() 
@@ -498,6 +546,153 @@ module ML =
   let randomInitSymmetric e r c =
     randomInit (- (abs e)) (abs e) r c
 
+  /// <summary>
+  /// Converts a neural network output matrix, where, the number of rows is 
+  /// equal to the number of examples, to a label vector, each element of which
+  /// is the zero-based index of the maximum among the values of each output
+  /// </summary>
+  /// <param name="y"></param>
+  let nnOutputToLabels (y: Matrix<float>) = 
+    y |> Matrix.aggRows (Vector.maxIndex >> float)
+
+  /// <summary>
+  /// Converts the output of a neural network to a binary vector.  If the value
+  /// of the output is larger than or equal to 0.5, convert to 1.0
+  /// otherwise, 0.0
+  /// </summary>
+  /// <param name="y">The output of the neural network, assumed to be a single
+  /// column matrix (Using a matrix here instead of a vector is to be consistent
+  /// with nnOutputToLabels) The rest of the columns is ignored if y has more
+  /// than one</param>
+  let nnOutputToBinary (y: Matrix<float>) =
+    y.[0.., 0]
+    |> Vector.map (fun v -> if v >= 0.5 then 1.0 else 0.0)
+
+  /// <summary>
+  /// Calculates the number of labels given a label vector.  The largest number
+  /// in the vector is assumed to be the largest index of a zero-based vector
+  /// representing one output.  Therefore, the actual number of labels is that
+  /// plus 1
+  /// </summary>
+  /// <param name="labelVector"></param>
+  let calcNumberOfLabels (labelVector: Vector<float>) =
+    labelVector |> Vector.max |> int |> ((+) 1)
+
+  /// <summary>
+  /// Converts a vector of labels to the output matrix of a neural network given
+  /// the number of labels in the problem. Note the special case when the number
+  /// of labels is equal to 2, the number of columns required is 1 not 2 as we 
+  /// can then use the value of 0 and 1 in one single column to tell the labels
+  /// apart
+  /// </summary>
+  /// <param name="labels"></param>
+  let nnLabelsToOutput numLabels (labels: Vector<float>) =
+    let n' = labels |> calcNumberOfLabels
+    if numLabels < n' then
+      failwithf "The label vector has an element as large as %d, expecting n 
+to be %d" (n'-1) n'
+    let m = labels |> Vector.length
+    let numColsInY = if numLabels <= 2 then 1 else numLabels
+    let y = DenseMatrix.create m numColsInY 0.0
+    labels 
+    |> Vector.iteri (
+      fun i v -> 
+        if numColsInY = 1 then y.[i, 0] <- v else y.[i, int v] <- 1.0)
+    y
+
+  /// <summary>
+  /// Predicts by forward propagation given the input and the thetas
+  /// </summary>
+  /// <param name="x"></param>
+  /// <param name="thetas"></param>
+  let predictNN x thetas = thetas |> Seq.fold forwardPropagate x
+
+  /// <summary>
+  /// Calculates the accuracy of a prediction given the input feature matrix
+  /// assuming any normalization has already been carried out and the output
+  /// vector containing the expected labels
+  /// </summary>
+  /// <param name="x"></param>
+  /// <param name="y"></param>
+  /// <param name="thetas"></param>
+  let accuracy x (expected: Vector<float>) thetas =
+    let y' = predictNN x thetas
+    let y'' =
+      match y'.ColumnCount with
+      | 1 -> nnOutputToBinary y'
+      | _ -> nnOutputToLabels y'
+    let numErr = 
+      y'' - expected 
+      |> abs 
+      |> (fun x -> x.PointwiseSign()) 
+      |> Vector.sum
+    (1.0 - numErr/float (x.RowCount)) * 100.0
+
+  /// <summary>
+  /// Implements the workflow of a neural network study, including randomizing
+  /// a the rows in the data set matrix, then splitting it up into the training,
+  /// cross validation and test data sets according to given percentages and 
+  /// then perform the training using the training set.  When done, it uses the
+  /// thetas matrix on the cv and test data set to calculate accuracy for all
+  /// three data sets.
+  /// </summary>
+  /// <param name="hidden"></param>
+  /// <param name="lambda"></param>
+  /// <param name="epsilon"></param>
+  /// <param name="trainingPerc"></param>
+  /// <param name="testPerc"></param>
+  /// <param name="tolerance"></param>
+  /// <param name="useNormalization"></param>
+  /// <param name="randomize"></param>
+  /// <param name="dataSet"></param>
+  let runNN hidden lambda epsilon trainingPerc testPerc tolerance 
+    useNormalization randomize dataSet =
+
+    // Use the last column of the data set to find the number of labels
+    let (_, labelVector) = dataSet |> useLastColAsY
+    let numLabels = labelVector |> calcNumberOfLabels
+
+    // split data set into training, test and cross-validation set
+    let (training, test, cv) = 
+      dataSet
+      |> (fun x -> if randomize then randomPermuteMatrixRows x else x)
+      |> splitDataSet trainingPerc testPerc
+
+    let (xTrain, labelTrain) = training |> useLastColAsY
+    let yTrain = labelTrain |> nnLabelsToOutput numLabels
+    let dims = hidden |> makeLayerSeq xTrain yTrain |> makeThetaDim
+    let (mu, sd, xTrainNorm) = 
+      if useNormalization then 
+        let (mu', sd', xnorm) = xTrain |> featureNormalize 
+        Some mu', Some sd', xnorm
+      else
+        (None, None, xTrain)
+    
+    // Run optimization for thetas
+    let thetas = 
+      makeNN xTrainNorm yTrain hidden lambda epsilon
+      |> bfgs tolerance
+      |> Matrix.reshape dims 
+      |> Seq.toArray
+
+    let optionalNormalize (mu, sd) x =
+      match (mu, sd) with
+      | Some mu', Some sd' -> normalize mu' sd' x
+      | _ -> x
+
+    let calcAccuracy (m: Matrix<float> option) =
+      match m with
+      | Some test ->
+          let (xTest, labelTest) = test |> useLastColAsY
+          let xnorm = optionalNormalize (mu, sd) xTest
+          accuracy xnorm labelTest thetas
+      | _ -> -1.0
+
+    (calcAccuracy (Some training),  // just to use the same function
+     calcAccuracy test, 
+     calcAccuracy cv,
+     thetas)
+
 module UnitTests =
 
   open NUnit.Framework
@@ -509,8 +704,10 @@ module UnitTests =
   [<TestCase("45", 30, 10, 5, 0.0)>]
   [<TestCase("10, 5", 3, 3, 5, 0.0)>]
   [<TestCase("25, 10, 5", 3, 3, 5, 0.0)>]
+  [<TestCase("25, 10, 5", 10, 3, 2, 0.0)>]
   let ``NN Gradient`` (layerString: string, nFeatures, nLabels, m, lambda) =
 
+    let n = if nLabels <= 2 then 1 else nLabels
     let hiddenLayers = 
       layerString.Split([|','|]) 
       |> Array.map (System.Int32.Parse) 
@@ -525,12 +722,13 @@ module UnitTests =
 
     let x = initTheta (m, nFeatures)
     let y =
-      let a = CreateMatrix.Dense(m, nLabels)
+      let a = CreateMatrix.Dense(m, n)
       [|1.0..(float m)|]
       |> Matrix.reshape [(m, 1)]
       |> Seq.head
-      |> fun u -> u % (float nLabels) + 1.0
-      |> Matrix.iteri (fun r c v -> a.[r, (int v)-1] <- 1.0)
+      |> fun u -> u % (float nLabels)
+      |> Matrix.iteri(
+          fun r c v -> if n = 1 then a.[r, 0] <- v else a.[r, (int v)] <- 1.0)
       a
     let dims = hiddenLayers |> makeLayerSeq x y |> makeThetaDim
     let thetas = dims |> Seq.map initTheta
@@ -542,11 +740,3 @@ module UnitTests =
     (numGrad - grad)
     |> Vector.sum
     |> should be (lessThan 1e-04)
-
-
-
-
-      
-
-
-

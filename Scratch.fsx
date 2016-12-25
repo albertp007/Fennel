@@ -7,6 +7,7 @@
 #r @"MathNet.Numerics.Data.Text.dll"
 
 open System
+open System.IO
 open Deedle
 open QuantFin.Signal
 open QuantFin.YahooFinance
@@ -16,7 +17,11 @@ open QuantFin.Portfolio
 open MathNet.Numerics.LinearAlgebra
 open MathNet.Numerics.Data.Text
 open MathNet.Numerics.Statistics
+open MathNet.Numerics
 open QuantFin.ML
+
+Control.NativeProviderPath <- Path.Combine [|__SOURCE_DIRECTORY__; @"bin\Debug"|]
+Control.UseNativeMKL();;
 
 let genSignals n1 n2 (prices: Frame<DateTime, string>) =
   let blah = prices?Close
@@ -45,7 +50,8 @@ let genTrade security lotsize (portfolio: Portfolio) (qty, price) =
   trade security price qty' portfolio
     
 let strategy0 stock lotsize initCash fromDate n1 n2 =
-  let prices = hist "cache" stock |> Frame.filterRows (fun d _ -> d >= fromDate)
+  let prices = hist histOnline "cache" stock 
+               |> Frame.filterRows (fun d _ -> d >= fromDate)
   let signals = genSignals n1 n2 prices
   let prices' =
     signals
@@ -77,47 +83,57 @@ let positions =
    ("2669.HK", 3659)
    ("2823.HK", 8000)] |> Map.ofList
 
-
 let strategyForName initCash date n1 n2 (name, lotsize) =
   strategy0 name lotsize initCash date n1 n2
 
 let refreshCache positions =
   positions
   |> getNames
-  |> List.map (hist "cache")
+  |> List.map (hist histOnline "cache")
 
-let hsi = hist "cache" "^HSI"
+let getPrices histFunc name =
+  hist histFunc "cache" name
 
-hsi?Close - hsi?Open
-
-let y =
-  hsi?Close - hsi?Open
-  |> Series.map (fun _ v -> if v > 0.0 then 1.0 else 0.0)
-  |> Series.shift (-1)
-
-let logClose = hsi?Close |> log
-let logReturn = logClose - (logClose |> Series.shift 1)
-
-hsi?Close - (hsi?Close |> Series.shift 1)
-|> Series.window 2
-|> Series.values
-|> Seq.map (Series.values)
-|> Seq.tail
-|> matrix
-
-let gap = ("Gap", hsi?Close - hsi?Open)
-let rsiSeries = ("RSI_14", hsi?Close |> rsi 14)
-let volumeSeries = ("Volume", hsi?Volume)
-let makeReturn n =
-  (sprintf "Return%0d" n, logReturn |> Series.shift n)
-
-let f =
-  [rsiSeries
-   volumeSeries
-   gap
-   makeReturn 0
-   makeReturn 1
-   makeReturn 2
+let makeFeatures (p: Frame<DateTime, string>) =
+  let logClose = p?Close |> log
+  let logReturn = logClose - (logClose |> Series.shift 1)
+  let makeReturn n =
+    (sprintf "Return%0d" n, logReturn |> Series.shift n)
+  let range = ("Range", (p?High - p?Low)/p?Close)
+  let gap = ("Gap", (p?Close - p?Open)/p?Close)
+  let rsiSeries = ("RSI", p?Close |> rsi 5)
+  let volumeSeries = ("Volume", p?Volume)
+  let macdSeries = ("MACD", p?Close |> macd 5 3 3)
+  let y0 =
+    p?Close - (p?Close |> Series.shift (-1))
+    // p?Close - p?Open   // as a test, uncomment this line to get 100%
+    |> Series.map (fun _ v -> if v > 0.0 then 1.0 else 0.0)
+    // |> Series.shift (-1)
+  [ rsiSeries
+    volumeSeries
+    range
+    gap
+    makeReturn 0
+    makeReturn 1
+    makeReturn 2
+    makeReturn 3
+    makeReturn 4
+    ("y", y0)
   ]
   |> Frame.ofColumns
   |> Frame.dropSparseRows
+  |> Frame.toArray2D
+  |> DenseMatrix.ofArray2
+
+let lambda = 0.0
+let epsilon = 0.001
+let hidden = [9]
+let stock = "2628.HK"
+let trainingPerc = 0.8
+let testPerc = 0.2
+let tolerance = 0.00001
+
+stock
+|> getPrices histCache 
+|> makeFeatures 
+|> runNN hidden lambda epsilon trainingPerc testPerc tolerance true true

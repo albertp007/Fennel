@@ -25,46 +25,20 @@ let thetaPath = "/Users/panga/Dropbox/Machine Learning/machine-learning-ex4/ex4/
 let data = MatlabReader.ReadAll<double>(path)
 let weights = MatlabReader.ReadAll<double>(thetaPath)
 let x : Matrix<float> = data.["X"]
-let y0 : Matrix<float> = data.["y"]
+let y0 : Matrix<float> = data.["y"] % 10.0 // convert to zero-based
+let dataSet = x |> Matrix.appendCol y0.[0.., 0]
 let Theta1 : Matrix<float> = weights.["Theta1"]
 let Theta2 : Matrix<float> = weights.["Theta2"]
-let nLabels = 10.0
-let y =
-  let m = CreateMatrix.Dense(y0.RowCount, int nLabels)
-  y0
-  |> Matrix.iteri (fun r c v -> m.[r, (int v)-1] <- 1.0)
-  m
+let nLabels = 10
+let y = y0.[0.., 0] |> nnLabelsToOutput nLabels
 
-let hiddenLayers = [25]
-let dims = hiddenLayers |> makeLayerSeq x y |> makeThetaDim
-let randomMatrix (r, c) = DenseMatrix.randomStandard<float> r c
-
+let hidden = [25; 10]
 let lambda = 1.0
 let epsilon = 0.001     // used in random initialization
 let tolerance = 0.0001  // used in BFGS optimization
+let trainingPerc = 0.8
+let testPerc = 0.2
+let useNormalization = false
+let randomize = true
 
-let predict x thetas =
-  thetas
-  |> Seq.fold forwardPropagate x
-
-let accuracy x y thetas =
-  predict x thetas
-  |> Matrix.aggRows (Vector.maxIndex >> float)
-  |> ((+) 1.0)
-  |> Seq.map2 (fun x y -> (x = y) |> boolToFloat) y
-  |> Seq.sum
-  |> float
-  |> ((/) (float x.RowCount))
-  |> ((/) 1.0)
-  |> ((*) 100.0)
-
-let thetas = 
-  makeNN x y hiddenLayers lambda epsilon 
-  |> bfgs tolerance
-  |> Matrix.reshape dims 
-  |> Seq.toArray
-
-accuracy x y0.[0.., 0] thetas
-
-// let names = [|"Theta1"; "Theta2"|]
-// MatlabWriter.Write("thetas.mat", thetas, names)
+runNN hidden lambda epsilon trainingPerc testPerc tolerance useNormalization randomize dataSet
