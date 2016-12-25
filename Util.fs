@@ -42,4 +42,20 @@ module Util =
   /// <param name="f"></param>
   /// <param name="x"></param>
   let split f x = x, f x
+
+  /// <summary>
+  /// Apply a function on a monoid N number of times
+  /// </summary>
+  /// <param name="f"></param>
+  /// <param name="n"></param>
+  /// <param name="init"></param>
+  let apply f n init =
+    [1..n] |> List.fold (fun s i -> f s) init
+
+  /// <summary>
+  /// Apply a function on a monoid N number of times, collecting intermediate
+  /// results in a list
+  /// </summary>
+  let applyScan f n init =
+    [1..n] |> List.scan (fun s i -> f s) init
     
