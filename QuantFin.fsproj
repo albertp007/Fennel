@@ -80,8 +80,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="DotNumerics">
-      <HintPath>packages\DotNumerics.1.1\lib\DotNumerics.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>..\DotNumerics\Source\DotNumerics\bin\Release\DotNumerics.dll</HintPath>
     </Reference>
     <Reference Include="FSharp.Core, Version=4.4.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <Private>True</Private>
@@ -150,7 +149,9 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Numerics" />
-    <Reference Include="TWSLib" />
+    <Reference Include="TWSLib">
+      <HintPath>..\TWSAPI\source\csharpclient\bin\Release\TWSLib.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <Import Project="packages\MathNet.Numerics.MKL.Win-x64.2.2.0\build\MathNet.Numerics.MKL.Win-x64.targets" Condition="Exists('packages\MathNet.Numerics.MKL.Win-x64.2.2.0\build\MathNet.Numerics.MKL.Win-x64.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

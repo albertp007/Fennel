@@ -242,12 +242,11 @@ module ML =
   /// <param name="f">the function to minimize</param>
   /// <param name="g">the gradient of the function</param>
   /// <param name="initial">initial guess</param>
-  let bfgs tolerance 
-    ((f:float[]->float), (g: float[]->float[]), (initial: float[])) =
-
-     let optimizer = L_BFGS_B()
-     optimizer.Tolerance <- tolerance
-     optimizer.ComputeMin( f, g, initial )
+  let bfgs tolerance (f: float[]->float, g: float[]->float[], initial: float[]) =
+              
+    let optimizer = L_BFGS_B()
+    optimizer.Tolerance <- tolerance
+    optimizer.ComputeMin( f, g, initial )
 
   /// <summary>
   /// This is similar to bfgs except that it takes functions which have
@@ -263,6 +262,22 @@ module ML =
      let f' = f |> toArrayFunc
      let g' = g |> toArrayGradFunc
      bfgs tolerance (f', g', init |> Vector.toArray ) |> vector
+
+  /// <summary>
+  /// A version of bfgs optimizer that uses one function to return both cost
+  /// and gradient vector instead of separate functions.  This might allow
+  /// slightly more efficient implementation in some cases where some code and
+  /// values can be shared between the calculation of the cost and the gradient
+  /// </summary>
+  /// <param name="tolerance"></param>
+  /// <param name="f"></param>
+  /// <param name="initial"></param>
+  let bfgs1 tolerance (f: float[]->(float*float[]), initial: float[]) =
+              
+    let f1 = new System.Func<float[], float*float[]>( f )
+    let optimizer = L_BFGS_B()
+    optimizer.Tolerance <- tolerance
+    optimizer.ComputeMin( f1, initial )
 
   /// <summary>
   /// Swap element with index i and j in an array in place
@@ -433,32 +448,29 @@ module ML =
     ((-y .* log h) - (1.0-y) .* log (1.0 - h) |> Matrix.sum) / (float m) + reg
 
   /// <summary>
-  /// Gradient function for neural network using the back propagation algorithm
+  /// Helper function to calculate the gradient of the neural network cost
+  /// function.  This takes care of the more complicated part of the calculation
+  /// which includes running backward propagations to get the deltas of each
+  /// hidden layer (i.e. excluding the input layer and the output layer) and
+  /// then going forward once again to multiply the activations of each layer
+  /// by the delta of each layer.  Finally, add on the regularization term.
   /// </summary>
-  /// <param name="x">The feature matrix of all training examples</param>
-  /// <param name="y">The result of all training examples</param>
-  /// <param name="hiddenLayers">Sequence of integers representing the number of
-  /// nodes in each hidden layer, not including the input layer and the output
-  /// layer as these can be derived using the input and output matrix and also
-  /// excluding the bias node in each hidden layer of the network</param>
-  /// <param name="lambda">Regularization parameter</param>
-  /// <param name="thetaArray">Theta matrices of all layers unrolled into an
-  /// array, column-major-wise.  See Matrix.unroll and Matrix.reshape</param>
-  let nnGrad x y hiddenLayers lambda thetaArray =    
-    let dims = hiddenLayers |> makeLayerSeq x y |> makeThetaDim
-    // Could have used x below but using y instead so that its type can be
-    // automatically inferred
-    let m = y |> Matrix.rowCount
-    let thetas = thetaArray |> Matrix.reshape dims
-    let activations = thetas |> Seq.scan forwardPropagate x
-    let output = activations |> Seq.last
-    let deltaLast = output - y
+  /// <param name="m"></param>
+  /// <param name="lambda"></param>
+  /// <param name="deltaLast"></param>
+  /// <param name="activations"></param>
+  /// <param name="thetas"></param>
+  let private nnGrad0 m lambda deltaLast activations (thetas: seq<Matrix<float>>) =
     let deltas = 
-      activations
+      activations // this is in the forward direction
+      // we don't need the last activation which is simply the values of the
+      // output nodes and that's encapsulated in deltaLast, hence take one less
       |> Seq.take (Seq.length activations - 1)
-      |> Seq.tail // we don't need the first activation which is simply the input
-      |> Seq.rev
-      |> Seq.zip (thetas |> Seq.rev)
+      |> Seq.tail // we don't need the first one which is simply the input
+      |> Seq.rev  // doing it backwards - backward propagation
+      // we need Theta(l), Activation(l) and delta(l+1) to get delta(l), hence
+      // the zip
+      |> Seq.zip (thetas |> Seq.rev)  
       |> Seq.scan backPropagate deltaLast
       |> Seq.rev
     let thetaRegs =
@@ -476,6 +488,108 @@ module ML =
     |> Matrix.unroll
 
   /// <summary>
+  /// Gradient function for neural network using the back propagation algorithm
+  /// </summary>
+  /// <param name="x">The feature matrix of all training examples</param>
+  /// <param name="y">The result of all training examples</param>
+  /// <param name="hiddenLayers">Sequence of integers representing the number of
+  /// nodes in each hidden layer, not including the input layer and the output
+  /// layer as these can be derived using the input and output matrix and also
+  /// excluding the bias node in each hidden layer of the network</param>
+  /// <param name="lambda">Regularization parameter</param>
+  /// <param name="thetaArray">Theta matrices of all layers unrolled into an
+  /// array, column-major-wise.  See Matrix.unroll and Matrix.reshape</param>
+  let nnGrad x y hiddenLayers lambda thetaArray =    
+    let dims = hiddenLayers |> makeLayerSeq x y |> makeThetaDim
+    // Could have used x below but using y instead so that its type can be
+    // automatically inferred
+    let m = y |> Matrix.rowCount
+    let thetas = thetaArray |> Matrix.reshape dims
+    // calculate activations in each layer by forward propagation
+    let activations = thetas |> Seq.scan forwardPropagate x
+    // the last activation is the values of the output nodes
+    let y' = activations |> Seq.last
+    let deltaLast = y' - y
+    nnGrad0 m lambda deltaLast activations thetas
+
+  /// <summary>
+  /// This function calculates both the cost and the gradient vector of a
+  /// multivariate neural network cost function, sharing code and values which
+  /// are needed by both to make the computation more efficient
+  /// </summary>
+  /// <param name="x"></param>
+  /// <param name="y"></param>
+  /// <param name="hiddenLayers"></param>
+  /// <param name="lambda"></param>
+  /// <param name="thetaArray"></param>
+  let nnCostGrad x y hiddenLayers lambda thetaArray = 
+    let dims = hiddenLayers |> makeLayerSeq x y |> makeThetaDim
+               
+    // Could have used x below but using y instead so that its type can be
+    // automatically inferred
+    let m = y |> Matrix.rowCount
+    let thetas = thetaArray |> Matrix.reshape dims
+    let activations = thetas |> Seq.scan forwardPropagate x
+    let y' = activations |> Seq.last
+    let deltaLast = y' - y
+    let reg = 
+      thetas
+      // Exclude bias nodes in regularization, hence the slice
+      |> Seq.fold (fun s m -> s + (m.[0.., 1..] .^ 2.0 |> Matrix.sum)) 0.0
+      |> (*) (lambda / 2.0 / float m)
+    ((-y .* log y') - (1.0-y) .* log (1.0 - y') |> Matrix.sum)/(float m) + reg,
+    nnGrad0 m lambda deltaLast activations thetas
+
+  /// <summary>
+  /// Randomly initializes a vector of a particular size n
+  /// </summary>
+  /// <param name="l"></param>
+  /// <param name="u"></param>
+  /// <param name="n"></param>
+  let randomInitVector l u n =
+    let dist = ContinuousUniform(l, u)
+    CreateVector.Random<float>( n, dist )
+
+  /// <summary>
+  /// Randomly initializes a matrix of a particular dimension with a continuous
+  /// uniform distribution with specified lower and upper bound
+  /// </summary>
+  /// <param name="l">Lower bound of the continuous uniform distribution</param>
+  /// <param name="u">Upper bound of the continuous uniform distribution</param>
+  /// <param name="r">Number of rows</param>
+  /// <param name="c">Number of columns</param>
+  let randomInitMatrix l u r c =
+    let dist = ContinuousUniform(l, u)
+    CreateMatrix.Random<float>( r, c, dist )
+
+  /// <summary>
+  /// Randomly initializes a matrix of a particular dimension with a continuous
+  /// uniform distribution which is symmetric around 0 and between [-e, e]
+  /// </summary>
+  /// <param name="e">The random numbers generated will be in [-e, e]</param>
+  /// <param name="r">Number of rows</param>
+  /// <param name="c">Number of columns</param>
+  let randomInitSymmetric e r c =
+    randomInitMatrix (- (abs e)) (abs e) r c
+
+  /// <summary>
+  /// Randomly initializes a vector representing the unrolled thetas to be
+  /// passed to the optimizer as initial guesses
+  /// </summary>
+  /// <param name="x"></param>
+  /// <param name="y"></param>
+  /// <param name="hiddenLayers"></param>
+  /// <param name="epsilon"></param>
+  let initTheta x y hiddenLayers epsilon =
+    hiddenLayers
+    |> makeLayerSeq x y
+    |> makeThetaDim
+    |> Seq.map (fun (r, c) -> r*c)
+    |> Seq.sum
+    |> (fun n -> randomInitVector -(abs epsilon) (abs epsilon) n)
+    |> Vector.toArray
+
+  /// <summary>
   /// Given the input and output matrix x and y which are the training examples
   /// and their actual values respectively, create a triplet containing the
   /// cost function, the gradient function and a randomly initialized array
@@ -491,17 +605,25 @@ module ML =
   /// <param name="epsilon">The random numbers generated are in the closed
   /// interval [-epsilon, epsilon]</param>
   let makeNN x y hiddenLayers lambda epsilon =
-    let dist = ContinuousUniform(-abs epsilon, abs epsilon)
     (
       nnCost x y hiddenLayers lambda,
       nnGrad x y hiddenLayers lambda,
-      hiddenLayers
-      |> makeLayerSeq x y
-      |> makeThetaDim
-      |> Seq.map (fun (r, c) -> r*c)
-      |> Seq.sum
-      |> (fun n -> CreateVector.Random<float>(n, dist))
-      |> Vector.toArray
+      initTheta x y hiddenLayers epsilon
+    )
+
+  /// <summary>
+  /// Same as makeNN except that it returns a function which returns both the
+  /// cost and the gradient in a tuple
+  /// </summary>
+  /// <param name="x"></param>
+  /// <param name="y"></param>
+  /// <param name="hiddenLayers"></param>
+  /// <param name="lambda"></param>
+  /// <param name="epsilon"></param>
+  let makeNN1 x y hiddenLayers lambda epsilon =
+    (
+      nnCostGrad x y hiddenLayers lambda,
+      initTheta x y hiddenLayers epsilon
     )
 
   /// <summary>
@@ -523,28 +645,6 @@ module ML =
       let minus = (thetasV - perturbV) |> Vector.toArray
       result.[i] <- (f plus - f minus) / 2.0 / e
     result
-
-  /// <summary>
-  /// Randomly initializes a matrix of a particular dimension with a continuous
-  /// uniform distribution with specified lower and upper bound
-  /// </summary>
-  /// <param name="l">Lower bound of the continuous uniform distribution</param>
-  /// <param name="u">Upper bound of the continuous uniform distribution</param>
-  /// <param name="r">Number of rows</param>
-  /// <param name="c">Number of columns</param>
-  let randomInit l u r c =
-    let dist = ContinuousUniform(l, u)
-    CreateMatrix.Random<float>( r, c, dist )
-
-  /// <summary>
-  /// Randomly initializes a matrix of a particular dimension with a continuous
-  /// uniform distribution which is symmetric around 0 and between [-e, e]
-  /// </summary>
-  /// <param name="e">The random numbers generated will be in [-e, e]</param>
-  /// <param name="r">Number of rows</param>
-  /// <param name="c">Number of columns</param>
-  let randomInitSymmetric e r c =
-    randomInit (- (abs e)) (abs e) r c
 
   /// <summary>
   /// Converts a neural network output matrix, where, the number of rows is 
@@ -670,8 +770,8 @@ to be %d" (n'-1) n'
     
     // Run optimization for thetas
     let thetas = 
-      makeNN xTrainNorm yTrain hidden lambda epsilon
-      |> bfgs tolerance
+      makeNN1 xTrainNorm yTrain hidden lambda epsilon
+      |> bfgs1 tolerance
       |> Matrix.reshape dims 
       |> Seq.toArray
 
@@ -740,3 +840,42 @@ module UnitTests =
     (numGrad - grad)
     |> Vector.sum
     |> should be (lessThan 1e-04)
+
+  [<TestCase("25, 10, 5", 10, 3, 2, 0.0)>]
+  let ``NN Cost Grad`` (layerString: string, nFeatures, nLabels, m, lambda) =
+    let n = if nLabels <= 2 then 1 else nLabels
+    let hiddenLayers = 
+      layerString.Split([|','|]) 
+      |> Array.map (System.Int32.Parse) 
+      |> Array.toList
+
+    let initTheta (r, c) =
+      [1.0..(float)(r*c)] 
+      |> vector 
+      |> sin 
+      |> Matrix.reshapeVector [(r, c)]
+      |> Seq.head
+
+    let x = initTheta (m, nFeatures)
+    let y =
+      let a = CreateMatrix.Dense(m, n)
+      [|1.0..(float m)|]
+      |> Matrix.reshape [(m, 1)]
+      |> Seq.head
+      |> fun u -> u % (float nLabels)
+      |> Matrix.iteri(
+          fun r c v -> if n = 1 then a.[r, 0] <- v else a.[r, (int v)] <- 1.0)
+      a
+    let dims = hiddenLayers |> makeLayerSeq x y |> makeThetaDim
+    let thetas = dims |> Seq.map initTheta |> Matrix.unroll
+
+    let costFunc = nnCost x y hiddenLayers lambda
+    let gradFunc = nnGrad x y hiddenLayers lambda
+    let costGradFunc = nnCostGrad x y hiddenLayers lambda
+
+    let c, g = costFunc thetas, gradFunc thetas
+    let c', g' = costGradFunc thetas
+    printfn "%A" (c, g)
+    printfn "%A" (c', g')
+    c' |> should equal c
+    g' |> should equal g

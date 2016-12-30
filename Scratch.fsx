@@ -113,6 +113,7 @@ let makeFeatures (p: Frame<DateTime, string>) =
     volumeSeries
     range
     gap
+    macdSeries
     makeReturn 0
     makeReturn 1
     makeReturn 2
@@ -128,7 +129,7 @@ let makeFeatures (p: Frame<DateTime, string>) =
 let lambda = 0.0
 let epsilon = 0.001
 let hidden = [9]
-let stock = "2628.HK"
+let stock = "^HSI"
 let trainingPerc = 0.8
 let testPerc = 0.2
 let tolerance = 0.00001

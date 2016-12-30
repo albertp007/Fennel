@@ -41,4 +41,15 @@ let testPerc = 0.2
 let useNormalization = false
 let randomize = true
 
+let initThetas = initTheta x y hidden epsilon
+
+let testCostGradPerf x y hidden lambda tolerance =
+  let f = nnCostGrad x y hidden lambda
+  (f, initThetas) |> bfgs1 tolerance
+
+let testGradPerf x y hidden lambda tolerance =
+  let f = nnCost x y hidden lambda
+  let g = nnGrad x y hidden lambda
+  (f, g, initThetas) |> bfgs tolerance
+
 runNN hidden lambda epsilon trainingPerc testPerc tolerance useNormalization randomize dataSet
