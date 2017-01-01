@@ -274,7 +274,7 @@ module ML =
   /// <param name="initial"></param>
   let bfgs1 tolerance (f: float[]->(float*float[]), initial: float[]) =
               
-    let f1 = new OptMultivariateFunctionGradient( f )
+    let f1 = OptMultivariateFunctionGradient( f )
     let optimizer = L_BFGS_B()
     optimizer.Tolerance <- tolerance
     optimizer.ComputeMin( f1, initial )
