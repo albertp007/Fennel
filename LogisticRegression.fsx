@@ -24,13 +24,14 @@ let thetaPath = "/Users/panga/Dropbox/Machine Learning/machine-learning-ex3/ex3/
 let data = MatlabReader.ReadAll<double>(path)
 let X0 : Matrix<float> = data.["X"]
 let y = data.["y"].[0.., 0]
-let X = X0 |> Matrix.prependOnes
+let X = X0 |> Matrix.prependColumnOnes
 let nPatterns = 10
 let m = X.RowCount
 let n = X.ColumnCount
 let lambda = 0.1
 let alpha = 1.0
 let rand = System.Random()
+let tolerance = 0.00001
 
 let inline (.=) m f =
     Matrix.map (((=) f) >> (fun b -> if b then 1.0 else 0.0)) m
@@ -44,12 +45,13 @@ let predict (allTheta: Matrix<float>) (v: Vector<float>) =
 let trainGradientDescent n lambda (x: Matrix<float>) (y: Vector<float>) alpha k =
   let th0 = DenseVector.create (x.ColumnCount) 0.0
   let y1 = y |> Vector.map ((=) (float k) >> boolToFloat)
-  gradientDescent n alpha (lgrGradCost lambda X y1) th0
+  gradientDescent n alpha (logisticCostGrad lambda X y1) th0
    
 let trainBFGS lambda (x: Matrix<float>) (y: Vector<float>) k =
   let th0 = DenseVector.create (x.ColumnCount) 0.0
   let y' = y |> Vector.map ((=) (float k) >> boolToFloat)
-  bfgs (lgrCost lambda x y') (lgrGrad lambda x y') th0
+  ((logisticCost lambda x y'), (logisticGrad lambda x y'), th0)
+  |> bfgsVec tolerance
 
 let accuracy (y: Vector<float>) (yhat: Vector<float>) =
   let m = y.Count

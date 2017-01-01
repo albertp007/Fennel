@@ -95,7 +95,7 @@ module ML =
     let j0 = 0.5/m* (((x*th - y) .^ 2.0) |> Vector.sum)
     let j = j0 + lambda / 2.0 / m * ((thReg .^ 2.0) |> Vector.sum)
     let dj = 1.0 / m * x.Transpose() * (h - y) + lambda / m * thReg
-    dj, j
+    j, dj
 
   /// <summary>
   /// Private helper function to evaluate the value of the regulated logistic 
@@ -196,10 +196,10 @@ module ML =
   /// <param name="x"></param>
   /// <param name="y"></param>
   /// <param name="th"></param>
-  let logisticGradCost (lambda: float) (x: Matrix<float>) (y: Vector<float>) 
+  let logisticCostGrad (lambda: float) (x: Matrix<float>) (y: Vector<float>) 
       (th: Vector<float>) = 
     let h = Vector.sigmoid (x*th)
-    logisticGrad0 lambda x y th h, logisticCost0 lambda h y th
+    logisticCost0 lambda h y th, logisticGrad0 lambda x y th h
 
   /// <summary>
   /// Gradient descent search algorithm given the number of iterations, the
@@ -211,10 +211,10 @@ module ML =
   /// <param name="gradFunc"></param>
   /// <param name="init"></param>
   let gradientDescent n (alpha: float) 
-    (gradFunc:Vector<float>->Vector<float>*float) (init: Vector<float>) =
+    (gradFunc:Vector<float>->float*Vector<float>) (init: Vector<float>) =
     let th = init.Clone()
     let f (t, c) =
-      let grad, j = gradFunc t
+      let j, grad = gradFunc t
       Vector.subInPlace t (alpha * grad)
       t, j::c
     let (t, c) = [1..n] |> List.fold (fun s _ -> f s) (th, [])
@@ -260,8 +260,8 @@ module ML =
   /// <param name="f"></param>
   /// <param name="g"></param>
   /// <param name="init"></param>
-  let bfgsVec tolerance (f:Vector<float>->float) 
-    (g: Vector<float>->Vector<float>) init =
+  let bfgsVec tolerance 
+    ((f:Vector<float>->float), (g: Vector<float>->Vector<float>), init) =
 
      let f' = f |> toArrayFunc
      let g' = g |> toArrayGradFunc

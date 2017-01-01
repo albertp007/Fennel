@@ -21,7 +21,7 @@ let linearRegress (x: Series<'a, float>) y =
 let grad f g x y = f x y, g x y
 
 // reading a csv file
-let data = DelimitedReader.Read<float>( "/Users/panga/Dropbox/ex1data2.txt", 
+let data = DelimitedReader.Read<float>( "/Users/panga/Dropbox/Machine Learning/machine-learning-ex1/ex1/ex1data2.txt", 
              false, ",", false)
 let m = data.RowCount
 let n = data.ColumnCount
@@ -30,6 +30,6 @@ let (mu, sigma, X') = data.[0.., 0..(n-2)] |> featureNormalize
 let X = DenseVector.create m 1.0 |> Matrix.prependCol <| X'
 let y = data.[0.., (n-1)]
 let theta0 = vector [0.0; 0.0; 0.0]
-let theta = gradientDescent 1500 0.01 (lnrGrad 0.0 X y >> fst) theta0
+let theta = gradientDescent 1500 0.01 (linearGrad 0.0 X y) theta0 |> fst
 let v = vector [1650.0; 3.0]
 (v - mu)/sigma |> Vector.join (vector [1.0]) |> (*) theta
