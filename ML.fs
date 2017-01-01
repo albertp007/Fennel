@@ -40,7 +40,10 @@ module ML =
   /// of features</param>
   let normalize (mu: Vector<float>) (sigma: Vector<float>) (x: Matrix<float>) =
     let (-) m v = Matrix.applyRowVector (-) v m
-    let (./) m v = Matrix.applyRowVector (Matrix.map2 (fun v1 v2 -> if v2 = 0.0 then v1 else v1/v2)) v m
+    let (./) m v = Matrix.applyRowVector (
+                     Matrix.map2 (
+                      fun v1 v2 -> 
+                        if v2 = 0.0 then v1 else v1/v2)) v m
     (x - mu) ./ sigma
 
   /// <summary>
@@ -242,7 +245,8 @@ module ML =
   /// <param name="f">the function to minimize</param>
   /// <param name="g">the gradient of the function</param>
   /// <param name="initial">initial guess</param>
-  let bfgs tolerance (f: float[]->float, g: float[]->float[], initial: float[]) =
+  let bfgs tolerance (f: float[]->float, g: float[]->float[], 
+                      (initial: float[])) =
               
     let optimizer = L_BFGS_B()
     optimizer.Tolerance <- tolerance
@@ -460,7 +464,9 @@ module ML =
   /// <param name="deltaLast"></param>
   /// <param name="activations"></param>
   /// <param name="thetas"></param>
-  let private nnGrad0 m lambda deltaLast activations (thetas: seq<Matrix<float>>) =
+  let private nnGrad0 m lambda deltaLast activations 
+    (thetas: seq<Matrix<float>>) =
+
     let deltas = 
       activations // this is in the forward direction
       // we don't need the last activation which is simply the values of the
