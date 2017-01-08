@@ -1,28 +1,34 @@
 ﻿#load "packages/Deedle.1.2.5/Deedle.fsx"
-#r @"bin\Debug\QuantFin.dll"
+#load "packages/RProvider.1.1.20/RProvider.fsx"
 #r @"bin\Debug\MathNet.Numerics.dll"
 #r @"bin\Debug\MathNet.Numerics.FSharp.dll"
 #r @"bin\Debug\MathNet.Numerics.Data.Text.dll"
 #r @"bin\Debug\XPlot.Plotly.dll"
 #r @"bin\Debug\XPlot.GoogleCharts.dll"
 #r @"bin\Debug\XPlot.GoogleCharts.Deedle.dll"
+#r @"bin\Debug\Deedle.RProvider.Plugin.dll"
+#r @"bin\Debug\QuantFin.dll"
 
 open System
 open System.IO
 open Deedle
-open QuantFin.Signal
-open QuantFin.YahooFinance
 open FSharp.Data
-open QuantFin.Util
-open QuantFin.Portfolio
 open MathNet.Numerics.LinearAlgebra
 open MathNet.Numerics.Data.Text
 open MathNet.Numerics.Statistics
 open MathNet.Numerics
-open QuantFin.ML
 open XPlot.Plotly
 open XPlot.GoogleCharts
 open XPlot.GoogleCharts.Deedle
+open RDotNet
+open RProvider
+open RProvider.graphics
+open RProvider.stats
+open QuantFin.Util
+open QuantFin.Portfolio
+open QuantFin.Signal
+open QuantFin.YahooFinance
+open QuantFin.ML
 
 Control.NativeProviderPath <- Path.Combine [|__SOURCE_DIRECTORY__; @"bin\Debug"|]
 Control.UseNativeMKL();;
