@@ -1,11 +1,9 @@
-﻿#I @"bin\Debug"
-#I @"packages"
-#r @"QuantFin.dll"
-#r @"MathNet.Numerics.dll"
-#r @"MathNet.Numerics.FSharp.dll"
-#r @"MathNet.Numerics.Data.Text.dll"
-#r @"MathNet.Numerics.Data.Matlab.dll"
-#r @"DotNumerics.dll"
+﻿#r @"bin\Debug\MathNet.Numerics.dll"
+#r @"bin\Debug\MathNet.Numerics.FSharp.dll"
+#r @"bin\Debug\MathNet.Numerics.Data.Text.dll"
+#r @"bin\Debug\MathNet.Numerics.Data.Matlab.dll"
+#r @"bin\Debug\DotNumerics.dll"
+#r @"bin\Debug\QuantFin.dll"
 
 open MathNet.Numerics.LinearAlgebra
 open MathNet.Numerics.Data.Text
@@ -48,10 +46,10 @@ let trainGradientDescent n lambda (x: Matrix<float>) (y: Vector<float>) alpha k 
   gradientDescent n alpha (logisticCostGrad lambda X y1) th0
    
 let trainBFGS lambda (x: Matrix<float>) (y: Vector<float>) k =
-  let th0 = DenseVector.create (x.ColumnCount) 0.0
+  let th0 = DenseVector.create (x.ColumnCount) 0.0 |> Vector.toArray
   let y' = y |> Vector.map ((=) (float k) >> boolToFloat)
-  ((logisticCost lambda x y'), (logisticGrad lambda x y'), th0)
-  |> bfgsVec tolerance
+  let costGrad = logisticCostGrad lambda x y' |> toArrayCostGradFunc
+  (costGrad, th0) |> bfgs1 tolerance
 
 let accuracy (y: Vector<float>) (yhat: Vector<float>) =
   let m = y.Count

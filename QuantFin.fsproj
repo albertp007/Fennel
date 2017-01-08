@@ -73,6 +73,7 @@
     <None Include="LogisticRegression.fsx" />
     <None Include="LinearRegression.fsx" />
     <None Include="NeuralNetwork.fsx" />
+    <Content Include="Google.DataTable.Net.Wrapper.XML" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Deedle">
@@ -91,6 +92,14 @@
     </Reference>
     <Reference Include="FsUnit.NUnit">
       <HintPath>packages\FsUnit.2.3.2\lib\net45\FsUnit.NUnit.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Google.DataTable.Net.Wrapper">
+      <HintPath>packages\Google.DataTable.Net.Wrapper.3.1.2.0\lib\Google.DataTable.Net.Wrapper.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="HttpClient">
+      <HintPath>packages\Http.fs.0.8.0.0\lib\net40\HttpClient.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="MathNet.Numerics">
@@ -124,6 +133,10 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="NHamcrest">
       <HintPath>packages\FsUnit.2.3.2\lib\net45\NHamcrest.dll</HintPath>
       <Private>True</Private>
@@ -151,6 +164,18 @@
     <Reference Include="System.Numerics" />
     <Reference Include="TWSLib">
       <HintPath>..\TWSAPI\source\csharpclient\bin\Release\TWSLib.dll</HintPath>
+    </Reference>
+    <Reference Include="XPlot.GoogleCharts">
+      <HintPath>packages\XPlot.GoogleCharts.1.4.2\lib\net45\XPlot.GoogleCharts.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="XPlot.GoogleCharts.Deedle">
+      <HintPath>packages\XPlot.GoogleCharts.Deedle.1.4.2\lib\net45\XPlot.GoogleCharts.Deedle.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="XPlot.Plotly">
+      <HintPath>packages\XPlot.Plotly.1.4.2\lib\net45\XPlot.Plotly.dll</HintPath>
+      <Private>True</Private>
     </Reference>
   </ItemGroup>
   <Import Project="packages\MathNet.Numerics.MKL.Win-x64.2.2.0\build\MathNet.Numerics.MKL.Win-x64.targets" Condition="Exists('packages\MathNet.Numerics.MKL.Win-x64.2.2.0\build\MathNet.Numerics.MKL.Win-x64.targets')" />

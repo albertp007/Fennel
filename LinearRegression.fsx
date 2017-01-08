@@ -1,10 +1,8 @@
 ﻿#load "packages/Deedle.1.2.5/Deedle.fsx"
-#I @"bin\Debug"
-#I @"packages"
-#r @"QuantFin.dll"
-#r @"MathNet.Numerics.dll"
-#r @"MathNet.Numerics.FSharp.dll"
-#r @"MathNet.Numerics.Data.Text.dll"
+#r @"bin\Debug\MathNet.Numerics.dll"
+#r @"bin\Debug\MathNet.Numerics.FSharp.dll"
+#r @"bin\Debug\MathNet.Numerics.Data.Text.dll"
+#r @"bin\Debug\QuantFin.dll"
 
 open System
 open Deedle

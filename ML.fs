@@ -235,6 +235,14 @@ module ML =
     vector >> f >> Vector.toArray
 
   /// <summary>
+  /// Converts a cost gradient function from vector form to float array form
+  /// which is accepted by bfgs1
+  /// </summary>
+  /// <param name="f"></param>
+  let inline toArrayCostGradFunc (f: Vector<float>->float*Vector<float>) =
+    vector >> f >> (fun (v, g) -> (v, g |> Vector.toArray ))
+
+  /// <summary>
   /// Calls the BFGS optimizer in DotNet Numerics with arrays in Mathnet 
   /// Numerics.  The BFGS optimizer takes double arrays in its arguments. This
   /// function is a helper function which converts the input from the vector

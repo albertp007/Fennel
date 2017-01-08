@@ -1,11 +1,9 @@
-﻿#I @"bin\Debug"
-#I @"packages"
-#r @"QuantFin.dll"
-#r @"MathNet.Numerics.dll"
-#r @"MathNet.Numerics.FSharp.dll"
-#r @"MathNet.Numerics.Data.Text.dll"
-#r @"MathNet.Numerics.Data.Matlab.dll"
-#r @"DotNumerics.dll"
+﻿#r @"bin\Debug\MathNet.Numerics.dll"
+#r @"bin\Debug\MathNet.Numerics.FSharp.dll"
+#r @"bin\Debug\MathNet.Numerics.Data.Text.dll"
+#r @"bin\Debug\MathNet.Numerics.Data.Matlab.dll"
+#r @"bin\Debug\DotNumerics.dll"
+#r @"bin\Debug\QuantFin.dll"
 
 open MathNet.Numerics.LinearAlgebra
 open MathNet.Numerics.LinearAlgebra.Storage
