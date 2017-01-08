@@ -73,7 +73,6 @@
     <None Include="LogisticRegression.fsx" />
     <None Include="LinearRegression.fsx" />
     <None Include="NeuralNetwork.fsx" />
-    <Content Include="Google.DataTable.Net.Wrapper.XML" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Deedle">
