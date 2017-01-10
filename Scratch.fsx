@@ -96,40 +96,66 @@ let positions =
 let strategyForName initCash date n1 n2 (name, lotsize) =
   strategy0 name lotsize initCash date n1 n2
 
-let refreshCache positions =
+let refreshCacheByPosition positions =
   positions
   |> getNames
   |> List.map (hist histOnline "cache")
 
+let refreshCache() =
+  let cacheName = "cache"
+  let r = 
+    cacheName 
+    |> sprintf @"^%s\\(?<name>[\^\.A-z0-9]*)\.csv$" 
+    |> System.Text.RegularExpressions.Regex
+  System.IO.Directory.GetFiles(cacheName, "*.csv")
+  |> Seq.iter (fun s ->
+                let m = r.Match(s)
+                if m.Success then 
+                  hist histOnline cacheName (m.Result("${name}")) |> ignore)
+
 let getPrices histFunc name =
   hist histFunc "cache" name
+
+let spx = getPrices histCache "^GSPC"
+let n225 = getPrices histCache "^N225"
 
 let makeFeaturesDataFrame (p: Frame<DateTime, string>) =
   let logClose = p?Close |> log
   let logReturn = logClose - (logClose |> Series.shift 1)
   let makeReturn n =
     (sprintf "Return%0d" n, logReturn |> Series.shift n)
-  let range = ("Range", (p?High - p?Low)/p?Close)
-  let gap = ("Gap", (p?Close - p?Open)/p?Close)
-  let rsiSeries = ("RSI", p?Close |> rsi 5)
-  let volumeSeries = ("Volume", p?Volume)
-  let macdSeries = ("MACD", p?Close |> macd 5 3 3)
-  let y0 =
-    p?Close - (p?Close |> Series.shift (-1))
-    // p?Close - p?Open   // as a test, uncomment this line to get 100%
-    |> Series.map (fun _ v -> if v > 0.0 then 1.0 else 0.0)
-    // |> Series.shift (-1)
-  [ rsiSeries
-    volumeSeries
-    range
-    gap
-    macdSeries
+  [ 
+    ("RSI", p?Close |> rsi 5)
+    ("Volume", p?Volume)
+    // ("MACD", p?Close |> macd 5 3 3)
+    ("Range", (p?High - p?Low)/p?Close)
+    ("Gap", (p?Close - p?Open)/p?Close)
+    // ("High0", p?High)
+    // ("High1", p?High |> Series.shift 1)
+    // ("High2", p?High |> Series.shift 2)
+    // ("Low0", p?Low)
+    // ("Low1", p?Low |> Series.shift 1)
+    // ("Low2", p?Low |> Series.shift 2)
+    // ("Open0", p?Open)
+    // ("Open1", p?Open |> Series.shift 1)
+    // ("Open2", p?Open |> Series.shift 2)
+    // ("Close0", p?Close)
+    // ("Close1", p?Close |> Series.shift 1)
+    // ("Close2", p?Close |> Series.shift 2)
+    ("SPX0", spx?Close - (spx?Close |> Series.shift 1))
+    // n225 opens earlier than HK, thus we can use n225 open on the next day
+    ("N225", (n225?Open |> Series.shift -1) - n225?Close)
+    // ("SPX1", spx?Close |> Series.shift 1)
     makeReturn 0
     makeReturn 1
     makeReturn 2
     makeReturn 3
     makeReturn 4
-    ("y", y0)
+    ("y", 
+      // (p?Close |> Series.shift (-1)) - p?Close
+      (p?Close - p?Open) |> Series.shift -1
+      // p?Close - p?Open   // as a test, uncomment this line to get 100%
+      |> Series.map (fun _ v -> if v > 0.0 then 1.0 else 0.0))
   ]
   |> Frame.ofColumns
   |> Frame.dropSparseRows
@@ -149,7 +175,7 @@ let displayFrame (df: Frame<'K, 'V>) =
 
 let lambda = 0.0
 let epsilon = 0.001
-let hidden = [9]
+let hidden = [20]
 let stock = "^HSI"
 let trainingPerc = 0.8
 let testPerc = 0.2
@@ -202,3 +228,11 @@ let trace2 =
 |> XPlot.Plotly.Chart.WithWidth 1000 
 |> XPlot.Plotly.Chart.WithHeight 1000
 |> XPlot.Plotly.Chart.Show
+
+open RProvider.tseries
+let features = getPrices histCache "^HSI" |> makeFeaturesDataFrame
+let res = R.adf_test(features?RSI)
+let air = RProvider.datasets.R.AirPassengers
+let s = R.start(air)
+let summary = R.summary(s)
+R.plot
