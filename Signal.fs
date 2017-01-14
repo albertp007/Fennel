@@ -464,6 +464,13 @@ module Signal =
     let tg = buyAllSellAll security lotsize 
     strategy c nextBarOpen tg (cash initCapital) prices
 
+  /// <summary>
+  /// Calculates the log return of a price series
+  /// </summary>
+  /// <param name="p"></param>
+  let calcLogReturn (p: Series<DateTime, float>) =
+    log p - (log p |> Series.shift 1) |> Series.dropMissing
+
   [<TestCase()>]
   let ``EMA``() =
     let v = [22.27; 22.19; 22.08; 22.17; 22.18; 22.13; 22.23; 22.43; 22.24; 
