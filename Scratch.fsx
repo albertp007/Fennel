@@ -17,9 +17,6 @@ open MathNet.Numerics.LinearAlgebra
 open MathNet.Numerics.Data.Text
 open MathNet.Numerics.Statistics
 open MathNet.Numerics
-open XPlot.Plotly
-open XPlot.GoogleCharts
-open XPlot.GoogleCharts.Deedle
 open RDotNet
 open RProvider
 open RProvider.graphics
@@ -29,6 +26,7 @@ open QuantFin.Portfolio
 open QuantFin.Signal
 open QuantFin.YahooFinance
 open QuantFin.ML
+open QuantFin.Plot
 
 Control.NativeProviderPath <- Path.Combine [|__SOURCE_DIRECTORY__; @"bin\Debug"|]
 Control.UseNativeMKL();;
@@ -166,13 +164,6 @@ let makeFeatures (p: Frame<DateTime, string>) =
   |> Frame.toArray2D
   |> DenseMatrix.ofArray2
 
-let displayFrame (df: Frame<'K, 'V>) =
-  let options = Options( page="enable", pageSize=20 )
-  df
-  |> Chart.Table
-  |> Chart.WithOptions options
-  |> Chart.Show
-
 let lambda = 0.0
 let epsilon = 0.001
 let hidden = [20]
@@ -185,49 +176,6 @@ stock
 |> getPrices histCache 
 |> makeFeatures 
 |> runNN hidden lambda epsilon trainingPerc testPerc tolerance true true
-
-let trace1 =
-    Scatter3d(
-        x = [0.0; 1.0],
-        y = [0.0; 1.0],
-        z = [0.0; -1.0],
-        mode = "lines",
-//        marker =
-//            Marker(
-//                color = "#1f77b4",
-//                size = 12.,
-//                symbol = "circle",
-//                line =
-//                    Graph.Line(
-//                        color = "rgb(0,0,0)",
-//                        width = 1.0
-//                    )
-//            ),
-        line =
-            Graph.Line(
-                color = "#1f77b4",
-                width = 2.
-            )
-    )
-
-let trace2 =
-    Scatter3d(
-        x = [0.0; 2.0],
-        y = [0.0; 3.0],
-        z = [0.0; 4.0],
-        mode = "lines",
-        line =
-            Graph.Line(
-                color = "#1f77b4",
-                width = 2.
-            )
-    )
-
-[trace1; trace2] 
-|> XPlot.Plotly.Chart.Plot 
-|> XPlot.Plotly.Chart.WithWidth 1000 
-|> XPlot.Plotly.Chart.WithHeight 1000
-|> XPlot.Plotly.Chart.Show
 
 open RProvider.tseries
 let features = getPrices histCache "^HSI" |> makeFeaturesDataFrame
