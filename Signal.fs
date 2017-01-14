@@ -471,6 +471,19 @@ module Signal =
   let calcLogReturn (p: Series<DateTime, float>) =
     log p - (log p |> Series.shift 1) |> Series.dropMissing
 
+  /// <summary>
+  /// Convenience function to apply a filter to a price data frame to filter
+  /// out entries that has volume equal to 0. The original filter was
+  /// hard-wired in the YahooFinance module, but there are plenty of symbols
+  /// that has volume equal to 0 in the entire series.  These are valid data
+  /// points even when volume is zero; whereas in other series, volume is zero
+  /// only for particular days which are likely due to holiday or absence of
+  /// trading sessions for some reasons.
+  /// </summary>
+  /// <param name="df"></param>
+  let filterOutZeroVolume (df: Frame<'k, string>) =
+    df |> Frame.filterRows (fun _ r -> r?Volume > 0.0)
+
   [<TestCase()>]
   let ``EMA``() =
     let v = [22.27; 22.19; 22.08; 22.17; 22.18; 22.13; 22.23; 22.43; 22.24; 

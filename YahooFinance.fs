@@ -83,7 +83,7 @@ module YahooFinance =
             |> Frame.indexColsWith prices.Headers.Value
             |> Frame.indexRowsDate "Date"
             |> Frame.sortRowsByKey
-            |> Frame.filterRows (fun _ r -> r?Volume > 0.0)
+            // |> Frame.filterRows (fun _ r -> r?Volume > 0.0)
     // Remove spaces from all column keys
     f.ColumnKeys
     |> Seq.iter (
