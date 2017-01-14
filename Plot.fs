@@ -23,10 +23,13 @@ module Plot =
   /// <param name="labels"></param>
   /// <param name="plot"></param>
   let showChart width height labels plot = 
-    plot
-    |> Plotly.Chart.WithHeight height
-    |> Plotly.Chart.WithWidth width
-    |> Plotly.Chart.WithLabels labels
+    let chart = 
+      plot
+      |> Plotly.Chart.WithHeight height
+      |> Plotly.Chart.WithWidth width
+    match labels with
+    | None -> chart
+    | Some names -> chart |> Plotly.Chart.WithLabels names
     |> Plotly.Chart.Show
 
   /// <summary>
