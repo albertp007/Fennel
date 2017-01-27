@@ -1,4 +1,4 @@
-﻿#load "packages/Deedle.1.2.5/Deedle.fsx"
+﻿#load "packages/Deedle/Deedle.fsx"
 #r @"bin\Debug\MathNet.Numerics.dll"
 #r @"bin\Debug\MathNet.Numerics.FSharp.dll"
 #r @"bin\Debug\MathNet.Numerics.Data.Text.dll"

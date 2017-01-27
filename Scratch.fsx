@@ -1,5 +1,5 @@
-﻿#load "packages/Deedle.1.2.5/Deedle.fsx"
-#load "packages/RProvider.1.1.20/RProvider.fsx"
+﻿#load "packages/Deedle/Deedle.fsx"
+#load "packages/RProvider/RProvider.fsx"
 #r @"bin\Debug\MathNet.Numerics.dll"
 #r @"bin\Debug\MathNet.Numerics.FSharp.dll"
 #r @"bin\Debug\MathNet.Numerics.Data.Text.dll"
