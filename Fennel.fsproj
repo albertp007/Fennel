@@ -6,7 +6,7 @@
     <ProjectGuid>{C59BFD10-0F9B-4503-976A-DD9A91B3051E}</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>QuantFin</RootNamespace>
-    <AssemblyName>QuantFin</AssemblyName>
+    <AssemblyName>Fennel</AssemblyName>
     <ReferencePath>
     </ReferencePath>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
@@ -90,16 +90,16 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="DotNumerics">
-      <HintPath>..\DotNumerics\Source\DotNumerics\bin\Release\DotNumerics.dll</HintPath>
+      <HintPath>localPackages\DotNumerics.dll</HintPath>
     </Reference>
     <Reference Include="FSharp.Core, Version=4.4.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <Private>True</Private>
     </Reference>
     <Reference Include="MathNet.Numerics">
-      <HintPath>..\mathnet\mathnet-numerics\out\lib-debug\Net40\MathNet.Numerics.dll</HintPath>
+      <HintPath>localPackages\MathNet.Numerics.dll</HintPath>
     </Reference>
     <Reference Include="MathNet.Numerics.FSharp">
-      <HintPath>..\mathnet\mathnet-numerics\out\lib-debug\Net40\MathNet.Numerics.FSharp.dll</HintPath>
+      <HintPath>localPackages\MathNet.Numerics.FSharp.dll</HintPath>
     </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="System" />
