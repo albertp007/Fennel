@@ -484,15 +484,26 @@ module Signal =
   let filterOutZeroVolume (df: Frame<'k, string>) =
     df |> Frame.filterRows (fun _ r -> r?Volume > 0.0)
 
+  /// <summary>
+  /// Assuming an increasing order of keys in a sequence of Deedle series, look
+  /// for the maximum first key among the series in the sequence and filter
+  /// out from each of the series in the sequence any values which are smaller
+  /// than or equal to the maximum key. 
+  /// </summary>
+  /// <param name="s"></param>
+  let alignByMaxKey s =
+    let maxKey = s |> Seq.maxBy Series.firstKey |> Series.firstKey
+    s |> Seq.map (Series.filter (fun k _ -> k >= maxKey))
+
   [<TestCase()>]
   let ``EMA``() =
-    let v = [22.27; 22.19; 22.08; 22.17; 22.18; 22.13; 22.23; 22.43; 22.24; 
+    let v = [ 22.27; 22.19; 22.08; 22.17; 22.18; 22.13; 22.23; 22.43; 22.24; 
               22.29; 22.15; 22.39; 22.38; 22.61; 23.36; 24.05; 23.75; 23.83;
               23.95; 23.63; 23.82; 23.87; 23.65; 23.19; 23.10; 23.33; 22.68;
               23.10; 22.40; 22.17]
     let k = [for i in 0..(List.length v-1) -> 
                 DateTime(2010, 3, 24) + TimeSpan(i*24, 0, 0)]
-    let r = [22.22; 22.21; 22.24; 22.27; 22.33; 22.52; 22.80; 22.97; 23.13;
+    let r = [ 22.22; 22.21; 22.24; 22.27; 22.33; 22.52; 22.80; 22.97; 23.13;
               23.28; 23.34; 23.43; 23.51; 23.54; 23.47; 23.40; 23.39; 23.26; 
               23.23; 23.08; 22.92]
     let e = v |> Series.ofValues |> Series.indexWith k |> ema 10
