@@ -1,4 +1,4 @@
-namespace QuantFin
+namespace Fennel
 
 open Deedle
 open System
@@ -145,7 +145,7 @@ module Signal =
 
   /// <summary>Calculates n day RSI given a list of bars</summary>
   /// <param name="n">number of days</param>
-  /// <param name="prices">list of QuantFin.Data.Bars</param>
+  /// <param name="prices">list of Fennel.Data.Bars</param>
   /// <returns>list of RSI with the first n entries being zero</returns>
   ///
   let rsi n (prices: PriceSeries) =

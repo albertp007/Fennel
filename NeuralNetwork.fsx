@@ -3,7 +3,7 @@
 #r @"bin\Debug\MathNet.Numerics.Data.Text.dll"
 #r @"bin\Debug\MathNet.Numerics.Data.Matlab.dll"
 #r @"bin\Debug\DotNumerics.dll"
-#r @"bin\Debug\QuantFin.dll"
+#r @"bin\Debug\Fennel.dll"
 
 open MathNet.Numerics.LinearAlgebra
 open MathNet.Numerics.LinearAlgebra.Storage
@@ -12,7 +12,7 @@ open MathNet.Numerics.Statistics
 open MathNet.Numerics.Data.Matlab
 open MathNet.Numerics
 open DotNumerics.Optimization
-open QuantFin.ML
+open Fennel.ML
 open System.IO
 
 Control.NativeProviderPath <- Path.Combine [|__SOURCE_DIRECTORY__; @"bin\Debug"|]

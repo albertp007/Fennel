@@ -1,4 +1,4 @@
-﻿namespace QuantFin
+﻿namespace Fennel
 
 open MathNet.Numerics.LinearAlgebra
 open MathNet.Numerics.Statistics

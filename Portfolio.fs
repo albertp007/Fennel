@@ -1,4 +1,4 @@
-﻿namespace QuantFin
+﻿namespace Fennel
 
 open Deedle
 open Util

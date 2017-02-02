@@ -1,8 +1,8 @@
-﻿namespace QuantFin
+﻿namespace Fennel
 open System.Reflection
 open System.Runtime.CompilerServices
 
-[<assembly: AssemblyTitle("QuantFin")>]
+[<assembly: AssemblyTitle("Fennel")>]
 [<assembly: AssemblyDescription("")>]
 [<assembly: AssemblyConfiguration("")>]
 [<assembly: AssemblyCompany("")>]

@@ -1,4 +1,4 @@
-﻿namespace QuantFin
+﻿namespace Fennel
 
 module IBClient =
 
@@ -742,7 +742,7 @@ module IBClient =
   
     open NUnit.Framework
     open FsUnit
-    open QuantFin.Util
+    open Fennel.Util
 
     [<TestCase("127.0.0.1", 4002)>]
     let ``IB Connection``(host, port) =

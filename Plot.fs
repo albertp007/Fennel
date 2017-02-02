@@ -1,4 +1,4 @@
-﻿namespace QuantFin
+﻿namespace Fennel
 
 module Plot =
   

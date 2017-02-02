@@ -7,7 +7,7 @@
 #r @"bin\Debug\XPlot.GoogleCharts.dll"
 #r @"bin\Debug\XPlot.GoogleCharts.Deedle.dll"
 #r @"bin\Debug\Deedle.RProvider.Plugin.dll"
-#r @"bin\Debug\QuantFin.dll"
+#r @"bin\Debug\Fennel.dll"
 
 open System
 open System.IO
@@ -21,12 +21,12 @@ open RDotNet
 open RProvider
 open RProvider.graphics
 open RProvider.stats
-open QuantFin.Util
-open QuantFin.Portfolio
-open QuantFin.Signal
-open QuantFin.YahooFinance
-open QuantFin.ML
-open QuantFin.Plot
+open Fennel.Util
+open Fennel.Portfolio
+open Fennel.Signal
+open Fennel.YahooFinance
+open Fennel.ML
+open Fennel.Plot
 
 Control.NativeProviderPath <- Path.Combine [|__SOURCE_DIRECTORY__; @"bin\Debug"|]
 Control.UseNativeMKL();;

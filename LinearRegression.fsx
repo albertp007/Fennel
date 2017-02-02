@@ -2,14 +2,14 @@
 #r @"bin\Debug\MathNet.Numerics.dll"
 #r @"bin\Debug\MathNet.Numerics.FSharp.dll"
 #r @"bin\Debug\MathNet.Numerics.Data.Text.dll"
-#r @"bin\Debug\QuantFin.dll"
+#r @"bin\Debug\Fennel.dll"
 
 open System
 open Deedle
 open MathNet.Numerics.LinearAlgebra
 open MathNet.Numerics.Data.Text
 open MathNet.Numerics.Statistics
-open QuantFin.ML
+open Fennel.ML
 
 let linearRegress (x: Series<'a, float>) y =
   Series.zipInner x y
