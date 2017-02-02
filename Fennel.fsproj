@@ -87,6 +87,7 @@
     <None Include="LogisticRegression.fsx" />
     <None Include="LinearRegression.fsx" />
     <None Include="NeuralNetwork.fsx" />
+    <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="DotNumerics">
